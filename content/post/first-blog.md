@@ -14,6 +14,22 @@ var i =0;
 
 ```
 
+## 7. 图片 {#section-07}
+
+不带标题的图片，如下图👇
+
+```
+/media/posts/hugo-nuo-post-preview/01.jpg
+```
+![这是一只梅花鹿](/media/posts/hugo-nuo-post-preview/01.jpg)
+
+带标题的图片，如下图👇
+
+{{% figure src="/media/posts/hugo-nuo-post-preview/01.jpg" alt="这是一只梅花鹿" title="显然，这是一只梅花鹿" %}}
+
+
+
+
 ## 10. JSFiddle
 
 引入 [JSFiddle](https://jsfiddle.net/) 网站的代码范例，在主题目录 `layouts/shortcodes` 文件夹下的 `jsfiddle.html` 对该标签进行定义。
