@@ -43,7 +43,7 @@ It makes use of a variety of open source projects including:
       <pubDate>Thu, 21 Dec 2017 12:36:03 +0800</pubDate>
       
       <guid>http://blog.herozhou.com/post/first-blog/</guid>
-      <description>h1 what do you do h2 var i =0; 10. JSFiddle 引入 JSFiddle 网站的代码范例，在主题目录 layouts/shortcodes 文件夹下的 jsfiddle.html 对该标签进行定义。 11. Codepen 引入 Code Pen 网站的代码演示，在主题目录 layouts/shortcodes 文件夹下的 codepen.html 对</description>
+      <description>h1 what do you do h2 var i =0; 7. 图片 不带标题的图片，如下图👇 /media/posts/hugo-nuo-post-preview/01.jpg 带标题的图片，如下图👇 显然，这是一只梅花鹿 10. JSFiddle 引入 JSFiddle 网站的代码范例，在主题目录 layouts/shortcodes 文件夹下的</description>
     </item>
     
     <item>
