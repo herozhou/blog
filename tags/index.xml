@@ -6,9 +6,109 @@
     <description>Recent content in Tags on herozhou工巧</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
+    <lastBuildDate>Thu, 31 Aug 2017 15:43:48 +0800</lastBuildDate>
     
 	<atom:link href="http://blog.herozhou.com/tags/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>English</title>
+      <link>http://blog.herozhou.com/tags/english/</link>
+      <pubDate>Thu, 31 Aug 2017 15:43:48 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/tags/english/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Preview</title>
+      <link>http://blog.herozhou.com/tags/preview/</link>
+      <pubDate>Wed, 23 Aug 2017 18:03:09 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/tags/preview/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Syntax Highlighting</title>
+      <link>http://blog.herozhou.com/tags/syntax-highlighting/</link>
+      <pubDate>Tue, 30 Aug 2011 16:01:23 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/tags/syntax-highlighting/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Tag 1</title>
+      <link>http://blog.herozhou.com/tags/tag-1/</link>
+      <pubDate>Wed, 30 Aug 2017 01:37:56 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/tags/tag-1/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Tag 2</title>
+      <link>http://blog.herozhou.com/tags/tag-2/</link>
+      <pubDate>Thu, 31 Aug 2017 15:43:48 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/tags/tag-2/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Tag 3</title>
+      <link>http://blog.herozhou.com/tags/tag-3/</link>
+      <pubDate>Wed, 23 Aug 2017 18:03:09 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/tags/tag-3/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Tag 4</title>
+      <link>http://blog.herozhou.com/tags/tag-4/</link>
+      <pubDate>Wed, 30 Aug 2017 01:53:34 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/tags/tag-4/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Tag 5</title>
+      <link>http://blog.herozhou.com/tags/tag-5/</link>
+      <pubDate>Tue, 30 Aug 2011 16:01:23 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/tags/tag-5/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Theme Preview</title>
+      <link>http://blog.herozhou.com/tags/theme-preview/</link>
+      <pubDate>Wed, 23 Aug 2017 18:03:09 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/tags/theme-preview/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>中文</title>
+      <link>http://blog.herozhou.com/tags/%E4%B8%AD%E6%96%87/</link>
+      <pubDate>Wed, 30 Aug 2017 01:37:56 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/tags/%E4%B8%AD%E6%96%87/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>日本語</title>
+      <link>http://blog.herozhou.com/tags/%E6%97%A5%E6%9C%AC%E8%AA%9E/</link>
+      <pubDate>Wed, 30 Aug 2017 01:53:34 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/tags/%E6%97%A5%E6%9C%AC%E8%AA%9E/</guid>
+      <description></description>
+    </item>
     
   </channel>
 </rss>

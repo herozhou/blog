@@ -6,9 +6,92 @@
     <description>Recent content on herozhou工巧</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
+    <lastBuildDate>Wed, 23 Aug 2017 18:03:09 +0800</lastBuildDate>
     
 	<atom:link href="http://blog.herozhou.com/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Theme preview</title>
+      <link>http://blog.herozhou.com/post/even-preview/</link>
+      <pubDate>Wed, 23 Aug 2017 18:03:09 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/post/even-preview/</guid>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;Copy from &lt;a href=&#34;https://laozhu.me/post/hugo-nuo-post-preview/&#34;&gt;《Hugo 主题 Nuo 文章样式预览》&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;这篇文章集中说明主题所支持的 Markdown 语法和 Hugo Shortcodes 插件，你也可以在这里预览到他们的样子。如果你不喜欢某些样式，可以去修改 css/ 文件夹下的 .scss 文件。&lt;/p&gt;
+
+&lt;p&gt;&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>English Creating a New Theme</title>
+      <link>http://blog.herozhou.com/post/english-preview/</link>
+      <pubDate>Thu, 31 Aug 2017 15:43:48 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/post/english-preview/</guid>
+      <description>&lt;h2 id=&#34;introduction&#34;&gt;Introduction&lt;/h2&gt;
+
+&lt;p&gt;This tutorial will show you how to create a simple theme in Hugo. I assume that you are familiar with HTML, the bash command line, and that you are comfortable using Markdown to format content. I&amp;rsquo;ll explain how Hugo uses templates and how you can organize your templates to create a theme. I won&amp;rsquo;t cover using CSS to style your theme.&lt;/p&gt;
+
+&lt;p&gt;&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>日本語 敬語体系</title>
+      <link>http://blog.herozhou.com/post/japanese-preview/</link>
+      <pubDate>Wed, 30 Aug 2017 01:53:34 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/post/japanese-preview/</guid>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;日本語の敬語体系は、一般に、大きく尊敬語・謙譲語・丁寧語に分類される。文化審議会国語分科会は、2007年2月に「敬語の指針」を答申し、これに丁重語および美化語を含めた5分類を示している。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h1 id=&#34;尊敬語&#34;&gt;尊敬語&lt;/h1&gt;
+
+&lt;p&gt;尊敬語は、動作の主体を高めることで、主体への敬意を表す言い方である。動詞に「お（ご）～になる」を付けた形、また、助動詞「（ら）れる」を付けた形などが用いられる。たとえば、動詞「取る」の尊敬形として、「（先生が）お取りになる」「（先生が）取られる」などが用いられる。&lt;/p&gt;
+
+&lt;p&gt;&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>中文 《长恨歌》</title>
+      <link>http://blog.herozhou.com/post/chinese-preview/</link>
+      <pubDate>Wed, 30 Aug 2017 01:37:56 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/post/chinese-preview/</guid>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;《长恨歌》是中国唐朝诗人白居易的一首长篇叙事诗。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h1 id=&#34;第一段-贵妃受宠爱&#34;&gt;第一段：贵妃受宠爱&lt;/h1&gt;
+
+&lt;p&gt;汉皇重色思倾国，御宇多年求不得。杨家有女初长成，养在深闺人未识。&lt;/p&gt;
+
+&lt;p&gt;天生丽质难自弃，一朝选在君王侧。回眸一笑百媚生，六宫粉黛无颜色。&lt;/p&gt;
+
+&lt;p&gt;春寒赐浴华清池，温泉水滑洗凝脂。侍儿扶起娇无力，始是新承恩泽时。&lt;/p&gt;
+
+&lt;p&gt;云鬓花颜金步摇，芙蓉帐暖度春宵。春宵苦短日高起，从此君王不早朝。&lt;/p&gt;
+
+&lt;p&gt;&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>Syntax Highlighting</title>
+      <link>http://blog.herozhou.com/post/syntax-highlighting/</link>
+      <pubDate>Tue, 30 Aug 2011 16:01:23 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/post/syntax-highlighting/</guid>
+      <description>&lt;pre&gt;&lt;code class=&#34;language-js&#34;&gt;function helloWorld () {
+  alert(&amp;quot;Hello, World!&amp;quot;)
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;/p&gt;</description>
+    </item>
     
   </channel>
 </rss>
