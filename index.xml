@@ -27,6 +27,17 @@
     </item>
     
     <item>
+      <title>About</title>
+      <link>http://blog.herozhou.com/about/</link>
+      <pubDate>Sun, 20 Aug 2017 21:38:52 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/about/</guid>
+      <description>Hugo is a static site engine written in Go.
+It makes use of a variety of open source projects including:
+ Cobra Viper J Walter Weatherman Cast  Learn more and contribute on GitHub.</description>
+    </item>
+    
+    <item>
       <title>English Creating a New Theme</title>
       <link>http://blog.herozhou.com/post/english-preview/</link>
       <pubDate>Thu, 31 Aug 2017 15:43:48 +0800</pubDate>
