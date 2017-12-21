@@ -3,34 +3,19 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
-    <loc>http://blog.herozhou.com/post/first-blog/</loc>
-    <lastmod>2017-12-21T12:36:03+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
     <loc>http://blog.herozhou.com/categories/</loc>
     <changefreq>weekly</changefreq>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>http://blog.herozhou.com/</loc>
-    <lastmod>2017-12-21T12:36:03+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>http://blog.herozhou.com/post/</loc>
-    <lastmod>2017-12-21T12:36:03+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0</priority>
-  </url>
-  
-  <url>
     <loc>http://blog.herozhou.com/tags/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>http://blog.herozhou.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>0</priority>
   </url>
