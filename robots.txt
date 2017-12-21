@@ -1,0 +1,2 @@
+User-agent: *
+Sitemap: http://herozhou.github.io/sitemap.xml
