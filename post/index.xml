@@ -27,6 +27,15 @@
     </item>
     
     <item>
+      <title>First Blog</title>
+      <link>http://blog.herozhou.com/post/first-blog/</link>
+      <pubDate>Thu, 21 Dec 2017 12:36:03 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/post/first-blog/</guid>
+      <description>h1 what do you do h2 var i =0; 10. JSFiddle 引入 JSFiddle 网站的代码范例，在主题目录 layouts/shortcodes 文件夹下的 jsfiddle.html 对该标签进行定义。 11. Codepen 引入 Code Pen 网站的代码演示，在主题目录 layouts/shortcodes 文件夹下的 codepen.html 对</description>
+    </item>
+    
+    <item>
       <title>English Creating a New Theme</title>
       <link>http://blog.herozhou.com/post/english-preview/</link>
       <pubDate>Thu, 31 Aug 2017 15:43:48 +0800</pubDate>
