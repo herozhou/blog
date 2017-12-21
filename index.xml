@@ -2,21 +2,21 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Even - A super concise theme for Hugo</title>
-    <link>http://herozhou.github.io/</link>
+    <link>https://herozhou.github.io/blog/</link>
     <description>Recent content on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
     <lastBuildDate>Thu, 21 Dec 2017 12:36:03 +0800</lastBuildDate>
     
-	<atom:link href="http://herozhou.github.io/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://herozhou.github.io/blog/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
       <title>First Blog</title>
-      <link>http://herozhou.github.io/post/first-blog/</link>
+      <link>https://herozhou.github.io/blog/post/first-blog/</link>
       <pubDate>Thu, 21 Dec 2017 12:36:03 +0800</pubDate>
       
-      <guid>http://herozhou.github.io/post/first-blog/</guid>
+      <guid>https://herozhou.github.io/blog/post/first-blog/</guid>
       <description> h1 what do you do
 h2 var i =0;  </description>
     </item>

@@ -1,2 +1,2 @@
 User-agent: *
-Sitemap: http://herozhou.github.io/sitemap.xml
+Sitemap: https://herozhou.github.io/blog/sitemap.xml
