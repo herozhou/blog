@@ -15,22 +15,20 @@ let execCommand = function(command,console_content,option) {
 			reject(new Error(error));
 			return;
 		}
-		log(chalk.yellow(stdout));
+		// log(chalk.yellow(stdout));
 		log(chalk.green(console_content));
 		
 		resolve(console_content);
 	});
-	// proc.stdout.setEncoding('utf8');
-    // proc.stdout.on('data', function (chunk) {
-	// 	console.log(`Current directory: ${process.cwd()}`);
+	proc.stdout.setEncoding('utf8');
+    proc.stdout.on('data', function (chunk) {
 
-    //     log(chalk.green(chunk))
-    // });
-    // proc.stderr.on('data', (data) => {
-	// 	console.log(`Current directory: ${process.cwd()}`);
+        log(chalk.yellow(chunk))
+    });
+    proc.stderr.on('data', (data) => {
 
-    //     log(chalk.red(data.toString()));
-    // });
+        log(chalk.red(data.toString()));
+    });
   });
  };
 
