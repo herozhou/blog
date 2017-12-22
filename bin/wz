@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+const chalk = require('chalk');
+const log = console.log;
+var {exec} = require('child_process');
+/*
+	wz help
+	wz rm Tinyme
+	wz install Tinyme
+
+*/
+var program = require('commander');
+              
+var server=require('./server.js');
+var build=require('./build.js');
+
+var remove=require('./remove.js');
+
+program
+.command('help')
+.description('显示使用帮助')
+.action(function (){
+  program.outputHelp();
+
+});
+
+
+program
+    .command('server')
+    .description('运行本地服务器')
+    .action(function( options){
+        log(chalk.green('准备运行本地服务器'));
+        
+        server();
+    }).on('-h', function() {
+        log('\n')
+        log(chalk.green('Examples 运行方法:'));
+        log(chalk.green('    $ wz server'));
+    });
+
+program
+    .command('build')
+    .description('移除UI组件 -u <ui_name> |移除编辑插件 -p <plugin_name>' )
+    .action(function( options){
+        log(chalk.green('准备打包'));
+        build();
+
+    }).on('--help', function() {
+
+         
+        log('\n')
+        log(chalk.green('Examples 运行方法:'));
+        log(chalk.green('    $ wz rm -p Tinymce'));
+        log(chalk.green('    $ wz rm -p Markdown'));
+         log(chalk.green('    $ wz rm -p Mockjs'));
+        log(chalk.green('    $ wz rm -p Jsontree'));
+    });
+
+    program
+    .command('showinstall')
+    .description('可以安装的： 插件：Markdown|Tinymce. UI组件：暂无' )
+     program
+    .command('showremove')
+    .description('可以移除的： 插件：Markdown|Tinymce|Jsontree|Mockjs. UI组件：暂无' )
+
+
+
+
+if(process.argv.length<=2){
+        program.outputHelp()
+
+    log(chalk.yellow('请输入要执行的命令'));
+
+} 
+
+program.parse(process.argv);
