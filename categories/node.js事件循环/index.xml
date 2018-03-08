@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Node.js事件循环 on herozhou工巧</title>
+    <link>http://blog.herozhou.com/categories/node.js%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF/</link>
+    <description>Recent content in Node.js事件循环 on herozhou工巧</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
+    <lastBuildDate>Sat, 14 Oct 2017 01:37:56 +0800</lastBuildDate>
+    
+	<atom:link href="http://blog.herozhou.com/categories/node.js%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>process.nextTick setImmediate 的区别</title>
+      <link>http://blog.herozhou.com/post/nexttick-setimmediate/</link>
+      <pubDate>Sat, 14 Oct 2017 01:37:56 +0800</pubDate>
+      
+      <guid>http://blog.herozhou.com/post/nexttick-setimmediate/</guid>
+      <description>&lt;p&gt;setImmediate和setTimeout（）是相似的，但取决于它们何时被调用，以不同的方式运行。&lt;/p&gt;
+
+&lt;p&gt;&lt;/p&gt;</description>
+    </item>
+    
+  </channel>
+</rss>

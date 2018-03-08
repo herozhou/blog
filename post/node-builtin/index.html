@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Node builtin模块加载源码分析 - herozhou工巧</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="herozhou工巧" />
+  <meta name="description" content=" 本章代码基于node v6.11.5
+ 这篇文章主要讲了 Node 中 builtin 模块加载的原理。 " />
+
+  <meta name="keywords" content="herozhou, herozhou工巧, 工巧" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.31.1" />
+
+
+<link rel="canonical" href="http://blog.herozhou.com/post/node-builtin/" />
+
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="icon" href="/favicon.ico" />
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+
+
+
+
+<link href="/dist/even.min.css?v=2.7.0" rel="stylesheet">
+<link href="/lib/fancybox/jquery.fancybox-3.1.20.min.css" rel="stylesheet">
+
+<meta property="og:title" content="Node builtin模块加载源码分析" />
+<meta property="og:description" content="
+本章代码基于node v6.11.5
+
+
+这篇文章主要讲了 Node 中 builtin 模块加载的原理。
+ " />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://blog.herozhou.com/post/node-builtin/" />
+
+
+
+<meta property="article:published_time" content="2017-10-05T01:37:56&#43;08:00"/>
+
+<meta property="article:modified_time" content="2017-10-06T01:37:56&#43;08:00"/>
+
+
+
+
+
+
+
+
+
+
+
+<meta itemprop="name" content="Node builtin模块加载源码分析">
+<meta itemprop="description" content="
+本章代码基于node v6.11.5
+
+
+这篇文章主要讲了 Node 中 builtin 模块加载的原理。
+ ">
+
+
+<meta itemprop="datePublished" content="2017-10-05T01:37:56&#43;08:00" />
+<meta itemprop="dateModified" content="2017-10-05T01:37:56&#43;08:00" />
+<meta itemprop="wordCount" content="10000">
+
+
+
+<meta itemprop="keywords" content="Node.js," />
+<meta name="twitter:card" content="summary"/><meta name="twitter:title" content="Node builtin模块加载源码分析"/>
+<meta name="twitter:description" content="
+本章代码基于node v6.11.5
+
+
+这篇文章主要讲了 Node 中 builtin 模块加载的原理。
+ "/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">herozhou工巧</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a><a href="/about/">
+        <li class="mobile-menu-item">About</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">herozhou工巧</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/about/">About</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Node builtin模块加载源码分析</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2017-10-05 </span>
+        <div class="post-category">
+            
+              <a href="/categories/node.js%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"> Node.js源码分析 </a>
+            
+          </div>
+        <span class="more-meta"> 约 10000 字 </span>
+        <span class="more-meta"> 预计阅读 20 分钟 </span>
+        
+      </div>
+    </header>
+
+    
+    
+<div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#node模块分类">Node模块分类</a></li>
+<li><a href="#builtin-module-和-native-module">builtin module 和 native module</a>
+<ul>
+<li><a href="#builtin-c-module-编译过程">builtin C++ module 编译过程</a>
+<ul>
+<li><a href="#node-module定义">node_module定义</a></li>
+<li><a href="#node-module-register">node_module_register</a></li>
+<li><a href="#宏的作用">宏的作用</a></li>
+<li><a href="#node-module-context-aware-builtin的源码">NODE_MODULE_CONTEXT_AWARE_BUILTIN的源码</a></li>
+</ul></li>
+<li><a href="#builtin-c-module-导出过程">builtin C++ module 导出过程</a>
+<ul>
+<li><a href="#binding-源码">Binding()源码</a></li>
+<li><a href="#definejavascript源码">DefineJavaScript源码</a></li>
+</ul></li>
+<li><a href="#小结">小结</a></li>
+</ul></li>
+<li><a href="#native-js-module">native JS module</a>
+<ul>
+<li><a href="#javascript核心模块的编译">JavaScript核心模块的编译</a>
+<ul>
+<li><a href="#bootstrap-node-js-源码">bootstrap_node.js 源码</a></li>
+</ul></li>
+<li><a href="#javascript的导出">JavaScript的导出</a>
+<ul>
+<li><a href="#模块文件的包装">模块文件的包装</a>
+<ul>
+<li><a href="#不同的文件扩展名-不同的载入方法">不同的文件扩展名，不同的载入方法</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#小结-1">小结</a></li>
+</ul></li>
+<li><a href="#总结">总结</a></li>
+<li><a href="#感谢">感谢</a></li>
+<li><a href="#精选面试题">精选面试题</a>
+<ul>
+<li><a href="#问题-如何在不重启-node-进程的情况下热更新一个-js-json-文件-这个问题本身是否有问题">问题： 如何在不重启 node 进程的情况下热更新一个 js/json 文件? 这个问题本身是否有问题?</a></li>
+<li><a href="#如果-a-js-require-了-b-js-那么在-b-中定义全局变量-t-111-能否在-a-中直接打印出来">如果 a.js require 了 b.js, 那么在 b 中定义全局变量 t = 111 能否在 a 中直接打印出来?</a></li>
+<li><a href="#a-js-和-b-js-两个文件互相-require-是否会死循环-双方是否能导出变量-如何从设计上避免这种问题">a.js 和 b.js 两个文件互相 require 是否会死循环? 双方是否能导出变量? 如何从设计上避免这种问题?</a></li>
+<li><a href="#exports-和-moudle-exports-的区别">exports 和 moudle.exports 的区别？</a></li>
+</ul></li>
+</ul>
+</nav>
+  </div>
+</div>
+
+    
+    <div class="post-content">
+      <blockquote>
+<p>本章代码基于node v6.11.5</p>
+</blockquote>
+
+<p>这篇文章主要讲了 Node 中 builtin 模块加载的原理。
+ </p>
+
+<ul>
+<li>建议1：看完官网文档再来看源码剖析，一些知识点比如模块的查找等等并没有在此提及。</li>
+<li>建议2：以朴灵老师著作《深入浅出node.js》为主<strong>系统学习</strong>，以此系列文章为辅剖析最新的源码</li>
+</ul>
+
+<h1 id="node模块分类">Node模块分类</h1>
+
+<p>严格来讲，Node 里面主要分以下几种模块:</p>
+
+<ul>
+<li>builtint C++ module(也称内建模块): <code>Node</code> 中以 <code>c++</code> 形式提供的模块，如 <code>tcp_wrap</code>、<code>contextify</code> 等</li>
+<li>constants module: <code>Node</code> 中定义常量的模块，用来导出如 <code>signal</code>, <code>openssl</code> 库、
+文件访问权限等常量的定义。如文件访问权限中的 <code>O_RDONLY</code>，<code>O_CREAT</code>、<code>signal</code> 中的 <code>SIGHUP</code>，<code>SIGINT</code> 等。</li>
+<li>native JS module(也称原生模块): <code>Node</code> 中以 <code>JavaScript</code> 形式提供的模块，如 <code>http,https,fs</code> 等。有
+些 <code>native module</code> 需要借助于 <code>builtin module</code> 实现背后的功能。如对于 <code>native</code>
+模块 <code>buffer</code> , 还是需要借助 <code>builtin node_buffer.cc</code> 中提供的功能来实现大容量
+内存申请和管理，目的是能够脱离 <code>V8</code> 内存大小使用限制。</li>
+<li>3rd-party module: 以上模块可以统称 <code>Node</code> 内建模块，除此之外为第三方模
+块，典型的如 <code>express</code> 模块。</li>
+</ul>
+
+<p><code>builtint C++</code> 模块有三个兄弟，都是通过 <code>C++</code> 编写的，内建(builtint)、扩展(addon)、已链接的扩展(linked),，分别含义为:</p>
+
+<table>
+<thead>
+<tr>
+<th>模块分类</th>
+<th>储存位置</th>
+<th>后缀</th>
+<th>描述</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>内建模块(builtint)</td>
+<td>src</td>
+<td>.cc</td>
+<td>Node.js的内建C++模块</td>
+</tr>
+
+<tr>
+<td>扩展模块(addon)</td>
+<td>build/Release</td>
+<td>.node</td>
+<td>用户扩展的C++模块，无需写进node命名空间，也不需要提供头文件，而是通过dlopen()方法动态加载，需要将.cc文件编译为node</td>
+</tr>
+
+<tr>
+<td>已链接的扩展模块(linked)</td>
+<td>src</td>
+<td>.cc</td>
+<td>在src目录下的非Node内建模块，是用户编写的，在node初始化之前链接到了node命名空间中</td>
+</tr>
+
+<tr>
+<td>内部模块(internal)</td>
+<td>-</td>
+<td>-</td>
+<td>Node-v8.9.0新增</td>
+</tr>
+</tbody>
+</table>
+
+<h1 id="builtin-module-和-native-module">builtin module 和 native module</h1>
+
+<p><img src="https://yjhjstz.gitbooks.io/deep-into-node/content/chapter2/FgrfI3a1NyQLu0FoX76R5DbjdoL0.png" alt="图1.1" /></p>
+
+<h2 id="builtin-c-module-编译过程">builtin C++ module 编译过程</h2>
+
+<blockquote>
+<p>问题引入 以<code>net.js</code>为例<code>const TCP = process.binding('tcp_wrap').TCP;</code>这句话是如何取得内置的 builtin C++ module 的？</p>
+</blockquote>
+
+<p>在 <code>Node</code> 中， builtin C++ module 的内部结构定义如下:</p>
+
+<h3 id="node-module定义">node_module定义</h3>
+
+<pre><code class="language-c">// node.h  399
+struct node_module {
+  // 表示node的ABI版本号，node本身导出的符号极少，所以变更基本上由v8、libuv等依赖引起
+  // 引入模块时，node会检查ABI版本号
+  int nm_version;
+  // 暂时只有NM_F_BUILTIN和0 NM_F_LINKED
+  unsigned int nm_flags;
+  // 存动态链接库的句柄
+  void* nm_dso_handle;
+  const char* nm_filename;
+  // 下面俩函数指针，一个模块只会有一个，用于初始化模块
+  node::addon_register_func nm_register_func;
+  node::addon_context_register_func nm_context_register_func;
+  const char* nm_modname;
+  void* nm_priv;
+  struct node_module* nm_link;
+};
+</code></pre>
+
+<p>而<code>node_module</code>在组织上是通过链表的形式:</p>
+
+<pre><code>// node-v8.9.0/src/node.cc
+static node_module* modpending;
+static node_module* modlist_builtin;
+static node_module* modlist_internal;
+static node_module* modlist_linked;
+static node_module* modlist_addon;
+</code></pre>
+
+<ul>
+<li>modpending: 主要用于加载 <code>C++ addon</code> 时传递当前加载的模块</li>
+<li>modlist_builtin: 存储内建模块的链表，<code>process.binding</code> 函数会查找这个链表来获取模块并初始化</li>
+<li>modlist_internal:</li>
+<li>modlist_linked: 存储已链接模块, <code>process._linkedBinding</code> 函数查此表</li>
+<li>modlist_addon: 存储用户扩展模块。
+这五个静态变量分别表示四个链表,通过<code>node_module_register</code>函数将传进的<code>node_module</code>结构体链接到不同的链表上（判断不同的类型），比如：<code>get_builtin_module()</code> 会遍历查找<code>modlist_builtin</code>链表来查找我们需要的<code>builtin</code>模块。   <code>node_module_register</code>的源码如下</li>
+</ul>
+
+<h3 id="node-module-register">node_module_register</h3>
+
+<pre><code class="language-c">//node.cc 2408
+extern &quot;C&quot; void node_module_register(void* m) {
+  struct node_module* mp = reinterpret_cast&lt;struct node_module*&gt;(m);
+
+  //如果有 NM_F_BUILTIN 标志（在宏封装的时候传入了NM_F_BUILTIN参数，具体看下文宏的源码）
+  if (mp-&gt;nm_flags &amp; NM_F_BUILTIN) {
+  
+    //插入链表中
+    mp-&gt;nm_link = modlist_builtin;
+    modlist_builtin = mp;
+    
+ 
+  } else if (mp-&gt;nm_flags &amp; NM_F_INTERNAL) {
+    mp-&gt;nm_link = modlist_internal;
+    modlist_internal = mp;
+  
+   //如果node还没初始化
+  } else if (!node_is_initialized) {
+    // &quot;Linked&quot; modules are included as part of the node project.
+    // Like builtins they are registered *before* node::Init runs.
+    //（译）Linked 模块作为 node 的一部分，像builtins 模块一样在 node::Init 运行之前被注册
+    mp-&gt;nm_flags = NM_F_LINKED;
+    mp-&gt;nm_link = modlist_linked;
+    modlist_linked = mp;
+  } else {
+    modpending = mp;
+  }
+}
+</code></pre>
+
+<h3 id="宏的作用">宏的作用</h3>
+
+<p>每个 builtin C++ 模块都会通过下列其中一个宏定义到node命名空间中：</p>
+
+<ul>
+<li>NODE_MODULE: 普通的模块</li>
+<li>NODE_MODULE_CONTEXT_AWARE: 具备识别情境的能力的普通模块</li>
+<li>NODE_MODULE_CONTEXT_AWARE_BUILTIN:具备识别情境的能力的 <code>builtin</code> 模块</li>
+</ul>
+
+<pre><code>#define NODE_MODULE(modname, regfunc)                                 \
+  NODE_MODULE_X(modname, regfunc, NULL, 0)
+
+#define NODE_MODULE_CONTEXT_AWARE(modname, regfunc)                   \
+  NODE_MODULE_CONTEXT_AWARE_X(modname, regfunc, NULL, 0)
+
+#define NODE_MODULE_CONTEXT_AWARE_BUILTIN(modname, regfunc)           \
+  NODE_MODULE_CONTEXT_AWARE_X(modname, regfunc, NULL, NM_F_BUILTIN)   \
+</code></pre>
+
+<p>识别情境是什么意思?<a href="https://gist.github.com/wuhaixing/9640931">Node.js V0.12新特性之在单进程中跑多个实例</a><br />
+简单的说就是在单进程中能够跑多个 <code>v8</code> 实例，而每个实例都能识别自己运行时所处环境的上下文，所以将会在下面看到加载每个模块的时候都会加入当前v8实例所处的上下文。</p>
+
+<p>介绍完了模块的储存结构，说回模块的编译<br />
+拿 <code>tcp_wrap.cc</code> 举例,该模块文件的最后一行如下所示</p>
+
+<pre><code>// tcp_wrap.cc 364
+NODE_MODULE_CONTEXT_AWARE_BUILTIN(tcp_wrap, node::TCPWrap::Initialize)
+</code></pre>
+
+<h3 id="node-module-context-aware-builtin的源码">NODE_MODULE_CONTEXT_AWARE_BUILTIN的源码</h3>
+
+<p>宏 <code>NODE_MODULE_CONTEXT_AWARE_BUILTIN</code>的源码如下所示：</p>
+
+<pre><code class="language-c">// node.h 485
+
+/**
+* 编译一个 builtin C++ 模块
+* @param modname 模块名称(如tcp_wrap)
+* @param regfunc Initialize函数(每个模块的初始化函数)
+* @param priv    暂不清楚(private ?)
+* @param flags   暂不清楚(似乎作为BUILTIN模块和LINKED模块的标识)
+*/
+#define NODE_MODULE_CONTEXT_AWARE_X(modname, regfunc, priv, flags)    \
+  extern &quot;C&quot; {                                                        \
+    static node::node_module _module =                                \
+    {                                                                 \
+      NODE_MODULE_VERSION,                                            \
+      flags,                                                          \
+      NULL,                                                           \
+      __FILE__,                                                       \
+      NULL,                                                           \
+      (node::addon_context_register_func) (regfunc),                  \
+      NODE_STRINGIFY(modname),                                        \
+      priv,                                                           \
+      NULL                                                            \
+    };                                                                \
+    NODE_C_CTOR(_register_ ## modname) {                              \
+      node_module_register(&amp;_module);                                 \
+    }                                                                 \
+  }
+...
+
+#define NODE_MODULE_CONTEXT_AWARE_BUILTIN(modname, regfunc)           \
+  NODE_MODULE_CONTEXT_AWARE_X(modname, regfunc, NULL, NM_F_BUILTIN)   \
+</code></pre>
+
+<p>宏<code>NODE_MODULE_CONTEXT_AWARE_BUILTIN</code>将模块名称(如<code>tcp_wrap</code>)和该模块注册函数(如<code>node::TCPWrap::Initialize</code>)等参数封装成一个 <code>node::node_module</code> 类型的结构体<code>_module</code>，并定义到node命名空间中。    <code>node_module_registerr(&amp;_module)</code>函数上文介绍过了,作用是把传进的<code>node_module</code>结构体插入到相应的链表中，看下<code>NODE_C_CTOR</code>宏:</p>
+
+<pre><code class="language-c">node.h 436
+#define NODE_C_CTOR(fn)                                               \
+  NODE_CTOR_PREFIX void fn(void) __attribute__((constructor));        \
+  NODE_CTOR_PREFIX void fn(void)
+#endif
+</code></pre>
+
+<p>该宏给传进来的函数加上 <code>attribute((constructor))</code> 修饰，例如对于 <code>tcp_wrap</code> 模块而言，会被扩展为函数 <code>static void _register_tcp_wrap (void) attribute((constructor))</code>。该函数以及该函数体内的<code>node_module_register</code>函数会在 node 的 <code>main()</code> 函数之前被执行，也就是说，我们的 <code>builtin C++</code> 模块会在 <code>main()</code> 函数之前被加载进 <code>modlist_builtin</code> 链表
+&gt; attribute((constructor))是gcc的一个函数属性声明。来自gcc文档的说明：（地址：<a href="https://gcc.gnu.org/onlnedocs/gcc/Common-Function-Attributes.html#Common-Function-Attributes）">https://gcc.gnu.org/onlnedocs/gcc/Common-Function-Attributes.html#Common-Function-Attributes）</a><br />
+The constructor attribute causes the function to be called automatically before execution enters main ().</p>
+
+<p>综上所述： C++内建模块完成了封装模块为结构体保存到链表的功能</p>
+
+<h2 id="builtin-c-module-导出过程">builtin C++ module 导出过程</h2>
+
+<p>通常不推荐文件模块直接调用 <code>builtin C++</code> 模块，如需调用直接调用 <code>native JS</code> 模块，因为 <code>native JS</code> 模块基本都封装了 <code>builtin C++</code> 模块,那么 <code>builtin C++</code> 模块是怎么将内部变量或方法导出，供外部 <code>native JS</code> 模块调用的呢？</p>
+
+<h3 id="binding-源码">Binding()源码</h3>
+
+<p>Node 在启动时，会生成一个全局变量<code>process</code>，并提供<code>Binding()</code>方法来协助加载 <code>builtin</code>模块。当我们的应用或者 node 内建的模块调用 <code>require()</code> 来引用另一个模块时，背后的支撑者即是这里提到的 <code>Binding()</code> 函数，源码如下所示:</p>
+
+<pre><code>//node.cc 2664
+static void Binding(const FunctionCallbackInfo&lt;Value&gt;&amp; args) {
+  //获取当前运行环境
+  Environment* env = Environment::GetCurrent(args);
+  /*
+  * Isolate代表了一个v8引擎的实例。每一个Isolate维护自己内部的状态。
+  * Isolate内创建的js对象无法在另一个Isolate中使用  
+  * v8允许创建多个Isolate并使它们并行运行在多个线程中。  
+  * 同一个Isolate同一时间只能在单个线程内运行。并且要求使用Locker/Unlocker使他们同步执行
+  */ 
+  
+  //获取传入的参数在当前v8实例的字符串表示，即模块名称
+  Local&lt;String&gt; module = args[0]-&gt;ToString(env-&gt;isolate());
+  node::Utf8Value module_v(env-&gt;isolate(), module);
+
+  // 获取当前执行环境中的缓存
+  Local&lt;Object&gt; cache = env-&gt;binding_cache_object();
+  //声明exports对象
+  Local&lt;Object&gt; exports;
+
+  //如果缓存在当前执行环境上下文中找到了该模块
+  if (cache-&gt;Has(env-&gt;context(), module).FromJust()) {
+    //这句的意思是 `exports = module.exports`
+    exports = cache-&gt;Get(module)-&gt;ToObject(env-&gt;isolate());
+    args.GetReturnValue().Set(exports);
+    return;
+  }
+
+  // Append a string to process.moduleLoadList
+  char buf[1024];
+  snprintf(buf, sizeof(buf), &quot;Binding %s&quot;, *module_v);
+  
+  Local&lt;Array&gt; modules = env-&gt;module_load_list_array();
+  uint32_t l = modules-&gt;Length();
+  modules-&gt;Set(l, OneByteString(env-&gt;isolate(), buf));
+  
+  //从modlist_builtin链表中获取该结构体
+  node_module* mod = get_builtin_module(*module_v);
+  
+  //如果结构体不为空,可以从modlist_builtin链表中获取到（即属于builtin模块）
+  if (mod != nullptr) {
+  
+    //根据当前v8实例创建一个 v8::Local&lt;v8::Object&gt; 对象赋值给exports
+    exports = Object::New(env-&gt;isolate());
+    // Internal bindings don't have a &quot;module&quot; object, only exports.
+    // （译）内置绑定对象没有module.exports 只有 exports
+    CHECK_EQ(mod-&gt;nm_register_func, nullptr);
+    CHECK_NE(mod-&gt;nm_context_register_func, nullptr);
+    Local&lt;Value&gt; unused = Undefined(env-&gt;isolate());
+    
+    //调用上文介绍的module结构体中的nm_context_register_func函数，将该模块对应的结构体注册到执行环境的上下文中。
+    mod-&gt;nm_context_register_func(exports, unused,
+      env-&gt;context(), mod-&gt;nm_priv);
+    
+    //将exports对象按模块名缓
+    cache-&gt;Set(module, exports);
+    
+  //如果传入的模块名称是常量模块
+  } else if (!strcmp(*module_v, &quot;constants&quot;)) {
+    
+    exports = Object::New(env-&gt;isolate());
+
+    //定义常量模块
+    DefineConstants(env-&gt;isolate(), exports);
+    cache-&gt;Set(module, exports);
+    
+  //如果传入的模块名称是native 模块
+  } else if (!strcmp(*module_v, &quot;natives&quot;)) {
+    exports = Object::New(env-&gt;isolate());
+    
+    //定义native模块
+    DefineJavaScript(env, exports);
+    cache-&gt;Set(module, exports);
+    
+  //如果都不是，就该报错了
+  } else {
+    char errmsg[1024];
+    snprintf(errmsg,
+             sizeof(errmsg),
+             &quot;No such module: %s&quot;,
+             *module_v);
+    return env-&gt;ThrowError(errmsg);
+  }
+
+  args.GetReturnValue().Set(exports);
+}
+</code></pre>
+
+<p>在加载bulitin模块时，我们先创建一个<code>exports</code>空对象，然后调用<code>get_builtin_module()</code>取出该模块对应的结构体，如果能获取到,模块的注册函数会先被执行，且将一个重要的数据 <code>exports</code>对象返回，即为<code>bulitin</code>模块,就调用上文介绍的<code>node_module</code>结构体中的<code>nm_context_register_func()</code>函数，将该模块对应的结构体注册到执行环境的上下文中并得到该有的 <code>module</code>和<code>module.exports</code>。然后将<code>exports</code>对象按模块名缓存。<br />
+再回想开头引入的问题 在<code>net.js</code>中<code>const TCP = process.binding('tcp_wrap').TCP;</code>这句话取得内置的 builtin C++ module的原理已经清楚了吧？
+如果不能从<code>modlist_builtin</code>链表中获取到,则表示该模块是常量模块或者native JS 模块。判断传入<code>Binding()</code>的参数中是否含有constans或者natives。接下来看下导出这两个模块的核心方法。</p>
+
+<h3 id="definejavascript源码">DefineJavaScript源码</h3>
+
+<p>DefineJavaScript源码：</p>
+
+<pre><code class="language-c">// node-v6.11.5/out/Release/obj/gen/node_javascript.cc  55434
+
+void DefineJavaScript(Environment* env, v8::Local&lt;v8::Object&gt; target) {
+  CHECK(target-&gt;Set(env-&gt;context(),
+                  internal_bootstrap_node_key.ToStringChecked(env-&gt;isolate()),
+                  internal_bootstrap_node_value.ToStringChecked(env-&gt;isolate())).FromJust());
+CHECK(target-&gt;Set(env-&gt;context(),
+                  _debug_agent_key.ToStringChecked(env-&gt;isolate()),
+                  _debug_agent_value.ToStringChecked(env-&gt;isolate())).FromJust());
+CHECK(target-&gt;Set(env-&gt;context(),
+                  buffer_key.ToStringChecked(env-&gt;isolate()),
+                  buffer_value.ToStringChecked(env-&gt;isolate())).FromJust());
+        
+...
+}
+// 处理node_native.h源码返回v8::Handle类型的数据可供编译
+v8::Local&lt;v8::String&gt; (Environment* env) {
+  return internal_bootstrap_node_value.ToStringChecked(env-&gt;isolate());
+}
+
+
+//buffer_key的结构体
+static struct : public v8::String::ExternalOneByteStringResource {
+  const char* data() const override {
+    return reinterpret_cast&lt;const char*&gt;(raw_buffer_key/*划重点*/);
+  }
+  size_t length() const override { return arraysize(raw_buffer_key/*划重点*/); }
+  void Dispose() override { /* Default calls `delete this`. */ }
+  v8::Local&lt;v8::String&gt; ToStringChecked(v8::Isolate* isolate) {
+    return v8::String::NewExternalOneByte(isolate, this).ToLocalChecked();
+  }
+} buffer_key;
+
+//下面会提到JavaScript核心文件被转为数组存储
+
+static const uint8_t raw_buffer_key[] = { 98,117,102,102,101,114 };
+static const uint8_t raw_buffer_value[] = { 39,117,115,101,32,115,116,114,105,99,116,39,59,10,10,99,111,110,115,116,
+32,98,105,110,100,105,110,103,32,61,32,112,114,111,99,101,115,115,46,98,
+105,110,100,105,110,103,40,39,98,117,102,102,101,114,39,41,59,10,99,111,
+110,115,116,32,123,32,99,111,109,112,97,114,101,58,32,99,111,109,112,97,
+...
+    
+}
+
+</code></pre>
+
+<p>可以看到<code>DefineJavaScript</code>的原理是把传入的<code>exports</code>对象进行扩展，即把当前运行环境上下文(context)，还有被<code>js2c.py</code>工具转换为字符串数组的JavaScript核心文件取出、重新生成的普通字符串，扩展到<code>exports</code>对象中，以对JavaScript核心模块进行编译和执行。仍然会将<code>exports</code>对象按模块名缓存。</p>
+
+<pre><code>// node_constants.cc 1145
+void DefineConstants(v8::Isolate* isolate, Local&lt;Object&gt; target) {
+  Local&lt;Object&gt; os_constants = Object::New(isolate);
+  Local&lt;Object&gt; err_constants = Object::New(isolate);
+  Local&lt;Object&gt; sig_constants = Object::New(isolate);
+  Local&lt;Object&gt; fs_constants = Object::New(isolate);
+  Local&lt;Object&gt; crypto_constants = Object::New(isolate);
+
+  DefineErrnoConstants(err_constants);
+  DefineWindowsErrorConstants(err_constants);
+  DefineSignalConstants(sig_constants);
+  DefineUVConstants(os_constants);
+  DefineSystemConstants(fs_constants);
+  DefineOpenSSLConstants(crypto_constants);
+  DefineCryptoConstants(crypto_constants);
+
+  os_constants-&gt;Set(OneByteString(isolate, &quot;errno&quot;), err_constants);
+  os_constants-&gt;Set(OneByteString(isolate, &quot;signals&quot;), sig_constants);
+  target-&gt;Set(OneByteString(isolate, &quot;os&quot;), os_constants);
+  target-&gt;Set(OneByteString(isolate, &quot;fs&quot;), fs_constants);
+  target-&gt;Set(OneByteString(isolate, &quot;crypto&quot;), crypto_constants);
+}
+</code></pre>
+
+<p>DefineConstants也是把传入的<code>exports</code>对象进行了扩展，只不过是将常量模块扩展到了<code>exports</code>对象中。</p>
+
+<h2 id="小结">小结</h2>
+
+<p>builtin C++ 模块通过宏<code>NODE_MODULE_CONTEXT_AWARE_BUILTIN</code>将模块名和该模块注册函数等参数封装成一个 <code>node::node_module</code> 类型的结构体<code>_module</code>并插入相应的<code>modlist_builtin</code>链表，并定义到node命名空间中。 Node初始化时会将 builtin C++ 模块 加载进内存中，通过<code>Binding()-&gt;get_builtin_module()</code>的调用关系，可以从<code>modlist_builtin</code>链表中取出相应的模块结构体，将该结构体注册到执行环境的上下文中并得到该有的 <code>module</code>和<code>module.exports</code>。然后将<code>exports</code>对象按模块名缓存。这样就可以在*.js文件中使用<code>process.binding('tcp_wrap')</code>得到该builtin C++ 模块。
+<img src="https://github.com/JacksonTian/diveintonode_figures/blob/master/02/module_layer.png?raw=true" alt="builtin C++ module的导出" /></p>
+
+<h1 id="native-js-module">native JS module</h1>
+
+<blockquote>
+<p>问题引入 : 拿http模块举例<code>var http = require('http');</code>  <code>require()</code>从哪里来？ 为什么我们在node中require一个模块就可以引入http模块？</p>
+</blockquote>
+
+<p>node.js使用了<code>V8</code>附带的<code>js2c.py</code>工具，把所有主程序<code>src/node.js</code>和模块程序<code>lib/*.js</code>中的每一个字符转换成对应的 <code>ASCII</code> 码，并存放在相应的C++数组里面，生成<code>node_natives.h</code>直接<code>include</code>到程序中，成了C++源码的一部分。这样做能提高内置js模块的编译效率。</p>
+
+<p>大致结构如下：</p>
+
+<pre><code class="language-c">namespace node {
+  const char node_native[] = {47, 47, 32, 67, 112 …}
+const char console_native[] = {47, 47, 32, 67, 112 …}
+const char buffer_native[] = {47, 47, 32, 67, 112 …}
+
+…
+
+}
+
+struct _native {const char name;  const char* source;  size_t source_len;};
+static const struct _native natives[] = {{ “node”, node_native, sizeof(node_native)-1 },
+{“dgram”, dgram_native, sizeof(dgram_native)-1 },
+{“console”, console_native, sizeof(console_native)-1 },
+{“buffer”, buffer_native, sizeof(buffer_native)-1 },
+…
+
+}
+</code></pre>
+
+<p>上文提到过的<code>node_javascript.js</code>文件有两个函数：
+* <code>MainSource()</code> 处理node_native源码返回v8::Handle类型的数据可供编译。
+* <code>DefineJavaScript(target)</code> 把其他所有模块源码变成v8::Handle类型后加载到传入的target对象上。</p>
+
+<h2 id="javascript核心模块的编译">JavaScript核心模块的编译</h2>
+
+<p>在启动Node进程时，JavaScript核心代码直接加载进内存中（如图1.1所示）。</p>
+
+<p>上篇提到过<code>bootstrap_node.js</code>文件，在 <code>Node</code> 初始化的时候被编译执行。那么它究竟是一个什么样的JavaScript文件呢？</p>
+
+<h3 id="bootstrap-node-js-源码">bootstrap_node.js 源码</h3>
+
+<pre><code class="language-javascript">// node-v6.11.5/lib/internal/bootstrap_node.js
+
+// Hello, and welcome to hacking node.js!
+// This file is invoked by node::LoadEnvironment in src/node.cc, and is
+// responsible for bootstrapping the node.js core. As special caution is given
+// to the performance of the startup process, many dependencies are invoked lazily.
+//(译)这个文件被src/node.cc下的node::LoadEnvironment函数调用，它的职责是引导node.js核心
+//特别需要慎重的是启动过程的性能，许多依赖是懒调用的(invoked lazily)
+
+(function(process) {
+
+  function startup(){ ... };
+  function setupProcessObject(){...};
+  function setupGlobalVariables(){...};
+  function setupGlobalTimeouts(){...};
+  function setupGlobalConsole(){...};
+  function installInspectorConsoleIfNeeded(){...};
+  function setupProcessFatal(){...};
+  function evalScript(){...};
+  function preloadModules(){...};
+  function run(){...};
+  function runInThisContext(){...};
+  ...
+  
+  
+  // Below you find a minimal module system, which is used to load the node
+  // core modules found in lib/*.js. All core modules are compiled into the
+  // node binary, so they can be loaded faster.
+  //（译）在lib/*.js 中找到一个最小的模块用于加载node核心模块
+  // 所有的模块都会被编译进node二进制文件里，所以它们能加载的更快
+  const ContextifyScript = process.binding('contextify').ContextifyScript;
+  function runInThisContext(code, options) {
+    const script = new ContextifyScript(code, options);
+    return script.runInThisContext();
+  }
+
+  function NativeModule(id) {
+    this.filename = `${id}.js`;
+    this.id = id;
+    this.exports = {};
+    this.loaded = false;
+    this.loading = false;
+  }
+  //还记得 node.cc 提供的Binding函数吗?其中有个判断就是是否是natives
+  //提取存储在node_javascript.cc中被js2c.py转换生成C++数组
+  //返回值为转换之后的所有javascript核心文件
+  NativeModule._source = process.binding('natives');
+  NativeModule._cache = {};
+
+  NativeModule.require = function(id) {
+    //如果是需要native_module,就直接返回这个构造函数
+    if (id === 'native_module') {
+      return NativeModule;
+    }
+
+    //如果缓存中有，从缓存中取出
+    const cached = NativeModule.getCached(id);
+    if (cached &amp;&amp; (cached.loaded || cached.loading)) {
+      return cached.exports;
+    }
+
+    //如果不存在这个模块，抛出异常
+    if (!NativeModule.exists(id)) {
+      throw new Error(`No such native module ${id}`);
+    }
+    //放入moduleLoadList列表中
+    process.moduleLoadList.push(`NativeModule ${id}`);
+
+    //根据模块名称创建一个NativeModule实例
+    const nativeModule = new NativeModule(id);
+
+    //缓存并执行
+    nativeModule.cache();
+    nativeModule.compile();
+
+    return nativeModule.exports;
+  };
+  //获取缓存函数
+  NativeModule.getCached = function(id) {
+    return NativeModule._cache[id];
+  };
+  //检查是否存在此模块
+  NativeModule.exists = function(id) {
+    return NativeModule._source.hasOwnProperty(id);
+  };
+
+  ...
+
+  //从所有JavaScript核心文件中取出这个模块
+  NativeModule.getSource = function(id) {
+    return NativeModule._source[id];
+  };
+  
+  //包装获取的JavaScript文件。
+  NativeModule.wrap = function(script) {
+    return NativeModule.wrapper[0] + script + NativeModule.wrapper[1];
+  };
+
+  NativeModule.wrapper = [
+    '(function (exports, require, module, __filename, __dirname) { ',
+    '\n});'
+  ];
+
+  //编译函数
+  NativeModule.prototype.compile = function() {
+
+    //获取模块并包装
+    var source = NativeModule.getSource(this.id);
+    source = NativeModule.wrap(source);
+
+    this.loading = true;
+
+    try {
+      //在当前上下文中运行这个JavaScript文件
+      const fn = runInThisContext(source, {
+        filename: this.filename,
+        lineOffset: 0,
+        displayErrors: true
+      });
+      fn(this.exports, NativeModule.require, this, this.filename);
+
+      this.loaded = true;
+    } finally {
+      this.loading = false;
+    }
+  };
+  //设置缓存函数
+  NativeModule.prototype.cache = function() {
+    NativeModule._cache[this.id] = this;
+  };
+
+  startup();
+});
+</code></pre>
+
+<p>重要的是<code>NativeModule</code>构造函数，注释已经加的很清楚了就不再多说了。逻辑就是通过<code>process</code>提供的定义在<code>node.cc</code>中的<code>Binding</code>函数调用<code>DefineJavaScript</code>函数（上文已经详细介绍过）,将在<code>./out/Release/obj/gen/node_javascript.cc</code>中存储的C++数组转换为JavaScript核心文件。</p>
+
+<p>综上所述 ：我们的JavaScript文件已经被加载进了node命名空间以及内存中，再回头想文章开头的问题：</p>
+
+<h2 id="javascript的导出">JavaScript的导出</h2>
+
+<blockquote>
+<p><code>var http = require('http');</code>为什么我们在文件中require一个模块就可以引入http模块？</p>
+
+<p>既然已经加载到内存空间（五指山）中了，找到它还不简单（妖猴哪里逃！）？</p>
+
+<p><code>lib/module.js</code> 中有如下代码:</p>
+
+<pre><code class="language-javascript">// node-v6.11.5/lib/module.js
+
+// Loads a module at the given file path. Returns that module's
+// `exports` property.
+//（译）给定一个文件路径加载模块并返回模块的 exports 属性
+Module.prototype.require = function(path) {
+    assert(path,'missing path');
+    assert(typeof path ==='string','path must be a string');
+    return Module._load(path, this);
+};
+</code></pre>
+
+<p>注意 <code>Module.require</code>方法 每个模块实例都有一个 <code>require</code> 方法。</p>
+
+<p>这里就解答了问题1：<code>require</code> 并不是全局性命令，而是每个模块提供的一个内部方法，也就是说，只有在模块内部才能使用 <code>require</code> 命令（唯一的例外是 <code>REPL</code> 环境）。另外，<code>require</code> 其实内部调用 <code>Module._load</code> 方法。</p>
+
+<p><code>Module</code> 构造函数（类）上篇已经剖析过了，这里具体看<code>Module._load</code>函数。</p>
+
+<pre><code class="language-javascript">// node-v6.11.5/lib/module.js
+
+// Check the cache for the requested file.
+// 1. If a module already exists in the cache: return its exports object.
+// 2. If the module is native: call `NativeModule.require()` with the
+//    filename and return the result.
+// 3. Otherwise, create a new module for the file and save it to the cache.
+//    Then have it load  the file contents before returning its exports
+//    object.
+Module._load = function(request, parent, isMain) {
+  if (parent) {
+    debug('Module._load REQUEST %s parent: %s', request, parent.id);
+  }
+
+  var filename = Module._resolveFilename(request, parent, isMain);
+
+  //如果在缓存中，直接返回exports对象
+  var cachedModule = Module._cache[filename];
+  if (cachedModule) {
+    return cachedModule.exports;
+  }
+
+  //如果是原生模块，调用NativeModule.require
+  if (NativeModule.nonInternalExists(filename)) {
+    debug('load native module %s', request);
+    return NativeModule.require(filename);
+  }
+
+  var module = new Module(filename, parent);
+
+  if (isMain) {
+    process.mainModule = module;
+    module.id = '.';
+  }
+
+  Module._cache[filename] = module;
+
+  //如果是用户扩展的模块，尝试加载它
+  tryModuleLoad(module, filename);
+
+  return module.exports;
+};
+</code></pre>
+</blockquote>
+
+<p>翻译一下注释：
+* 如果模块在缓存中，返回它的 <code>exports</code> 对象。
+* 如果是原生的模块，通过调用 <code>NativeModule.require()</code> 返回结果。
+* 否则，创建一个新的模块，并保存到缓存中。然后再返回它的<code>exports</code>对象之前加载它</p>
+
+<p>http是原生模块，所以就调用<code>NativeModule.require()</code> 返回一个<code>exports</code>对象。</p>
+
+<p><code>exports</code>对象？ 等等，我好像记起来了什么,看下http大致源码</p>
+
+<pre><code class="language-javascript">// node-v6.11.5/lib/http.js
+'use strict';
+const util = require('util');
+const internalUtil = require('internal/util');
+const EventEmitter = require('events');
+
+exports.request = ...
+exports.createServer = ...
+exports.Client = ...
+exports.createClient = ...
+
+</code></pre>
+
+<p>仅仅定义了几个常量，没有定义<code>exports</code>对象啊，它是从哪里冒出来的？我们怎么可以不定义直接使用？</p>
+
+<h3 id="模块文件的包装">模块文件的包装</h3>
+
+<p>大家都了解<code>CommonJS</code>模块规范，我们知道每个模块文件中存在着<code>require</code>、<code>exports</code>、<code>module</code>这3个变量，但是它们在模块文件中并没有定义，甚至在Node的API文档中，我们知道每个模块中还有<code>__filename</code>、<code>__dirname</code>这两个变量的存在，它们又是从何而来的?
+回头看下<code>NativeModule</code>，</p>
+
+<pre><code class="language-javascript">  NativeModule.wrap = function(script) {
+    return NativeModule.wrapper[0] + script + NativeModule.wrapper[1];
+  };
+
+  NativeModule.wrapper = [
+    '(function (exports, require, module, __filename, __dirname) { ',
+    '\n});'
+  ];
+</code></pre>
+
+<p><code>NativeModule</code>对获取的 JavaScript 文件内容进行了包装 。在头部添加了(<code>function (exports, require, module, __filename, __dirname) {\n</code>，在尾部添加了<code>\n});</code> 一个正常的 JavaScript 文件会被包装成如下的样子：</p>
+
+<pre><code class="language-javascript">(function (exports, require, module, __filename, __dirname) {
+    var math = require('math');
+    exports.area = function (radius) {
+    return Math.PI * radius * radius; };
+ });
+</code></pre>
+
+<p>这样每个模块文件都进行了作用域隔离。包装之后的代码会通过<code>runInThisContext()</code>执行(类似eval，只是有明确上下文，不会污染全局)，返回一个具体的的<code>function</code>对象。最后，将当前模块对象的<code>exports</code>属性、<code>require()</code>方法、<code>module</code>(模块自身)，以及在文件定位中得到的完整文件路径和文件目录作为参数传递给这个<code>function()</code>执行。
+这就是这些变量并没有定义在每个模块文件中却存在的原因。在执行之后，模块的<code>exports</code>属性被返回给了调用方。<code>exports</code>属性上的任何方法和属性都可以被外部调用到，但是模块中的其余变量或属性不可直接调用。</p>
+
+<p>我们终于了解了<code>require()</code>之后的原理，
+问题2就解决了。</p>
+
+<h4 id="不同的文件扩展名-不同的载入方法">不同的文件扩展名，不同的载入方法</h4>
+
+<p>这里需要注意一下，Node对于不同的文件扩展名，其载入方法也有所不同，具体如下所示：</p>
+
+<pre><code class="language-javascript">// node-v8.9.0/lib/module.js
+
+// Native extension for .js
+Module._extensions['.js'] = function(module, filename) {
+
+  //从本地同步读取文件
+  var content = fs.readFileSync(filename, 'utf8');
+  module._compile(internalModule.stripBOM(content), filename);
+};
+
+
+// Native extension for .json
+Module._extensions['.json'] = function(module, filename) {
+  var content = fs.readFileSync(filename, 'utf8');
+  try {
+    module.exports = JSON.parse(internalModule.stripBOM(content));
+  } catch (err) {
+    err.message = filename + ': ' + err.message;
+    throw err;
+  }
+};
+
+
+//Native extension for .node
+Module._extensions['.node'] = function(module, filename) {
+  return process.dlopen(module, path._makeLong(filename));
+};
+</code></pre>
+
+<ul>
+<li>.js 文件。通过fs，模块同步读取文件后编译执行</li>
+<li>.node 文件。这是用C++编写的扩展文件，通过dlopen() 方法加载最后编译生成的文件</li>
+<li>.json 文件。通过fs模块同步读取文件后，用JSON.parse()解析返回结果</li>
+<li>其余扩展名。它们都被当做.js文件载入</li>
+</ul>
+
+<p>每一个编译成功的模块都会将其文件路径作为索引缓存在Module._cache对象上，以提高二次引入的性能。</p>
+
+<h2 id="小结-1">小结</h2>
+
+<p>编译过程：<code>js2c.py</code> 会将 node 源代码中<code>src/node.js</code>和<code>lib/*.js</code> 的每一个字符转换成对应的 <code>ASCII</code>  码，并存放在C++数组里面。在启动Node进程时，使用上文提到过的<code>process.binding('natives')-&gt;DefineJavaScript()</code>就可从数组中提取出来直接加载进内存中。
+ 导出过程：
+ * 原生模块：通过<code>Module._load</code>函数调用<code>NativeModule.require()</code> 返回一个<code>exports</code>对象，这个对象经过了<code>NativeModule.wrap()</code>的包装，加上了<code>exports, require, module, __filename, __dirname</code>参数，从而具有了<code>exports</code>属性。可以直接通过<code>var http = require('http')</code>的方式得到这个模块。例如<code>var http = require('http')</code>
+ * 自定义模块:通过<code>_load()-&gt;tryModuleLoad()-&gt;load()-&gt;_extensions()-&gt;_compile() -&gt;runInThisContext()</code>和
+<code>var content = fs.readFileSync(filename, 'utf8');</code>从本地同步读取文件,经过<code>Module.wrap(content)</code>包装之后，<code>runInThisContext()</code>在当前上下文执行这个代码。例如<code>node app.js</code>形式和<code>var myfile = require('./myfile')</code>形式。</p>
+
+<p><img src="https://github.com/JacksonTian/diveintonode_figures/blob/master/02/require_flow.png?raw=true" alt="image" /></p>
+
+<h1 id="总结">总结</h1>
+
+<ul>
+<li>builtin C++模块属于最底层的模块，主要提供API给JavaScript核心模块和第三方JavaScript文件模块调用。</li>
+<li>nvative JS模块主要扮演的职责有两类：一类是作为builtin C++模块的封装层和桥接层，供文件模块调用，一类是纯粹的功能模块，它不需要直接跟底层打交道，但是又十分重要。</li>
+<li>文件模块通常由第三方编写，包括普通的JavaScript模块和C++扩展模块，主要调用方向为普通JavaScript模块调用扩展模块。<br /></li>
+</ul>
+
+<p><img src="https://github.com/JacksonTian/diveintonode_figures/blob/master/02/module_call_stack.png?raw=true" alt="image" /></p>
+
+<h1 id="感谢">感谢</h1>
+
+<ul>
+<li>《深入浅出node.js》朴灵老师著作，建议以此书为主系统学习，以此篇文章为辅剖析最新的源码</li>
+<li><a href="https://github.com/renaesop/blog/issues/21">https://github.com/renaesop/blog/issues/21</a></li>
+<li><a href="http://www.cnblogs.com/kazetotori/p/6150216.html">http://www.cnblogs.com/kazetotori/p/6150216.html</a></li>
+<li><a href="https://www.gitbook.com/book/yjhjstz/deep-into-node/details">https://www.gitbook.com/book/yjhjstz/deep-into-node/details</a></li>
+<li><a href="https://luzeshu.com/tech">https://luzeshu.com/tech</a></li>
+<li><a href="https://xidui.github.io/2015/03/12/nodejs-%E6%BA%90%E7%A0%81%E6%B5%85%E6%9E%90-%E4%BA%8C-%E2%80%94%E2%80%94%E6%A0%B8%E5%BF%83%E6%A8%A1%E5%9D%97%E7%BC%96%E8%AF%91%E5%8A%A0%E8%BD%BD%E5%8E%9F%E7%90%86/">https://xidui.github.io</a></li>
+<li><a href="http://www.ruanyifeng.com/blog/2015/05/require.html">http://www.ruanyifeng.com/blog/2015/05/require.html</a></li>
+</ul>
+
+<h1 id="精选面试题">精选面试题</h1>
+
+<h2 id="问题-如何在不重启-node-进程的情况下热更新一个-js-json-文件-这个问题本身是否有问题">问题： 如何在不重启 node 进程的情况下热更新一个 js/json 文件? 这个问题本身是否有问题?</h2>
+
+<blockquote>
+<p>情景 ：老板让王二狗写一个限时抢购页面，王二狗熬夜赶出一个<code>server.js</code>文件，其中一段返回客户端<code>$ 11.11</code>，在主文件app.js中引入了<code>require('./server.js')</code>，服务器跑起来之后，老板打电话来劈头盖脸骂一顿怎么把人民币写成美元了，王二狗终于意识到这是中英文输入法的锅，不过还是得自己背。改完之后发现并没有反应，还是扎眼的 <code>$</code>,王二狗终于想起来Node缓存机制。重启服务器？抢购页面能耽误一秒？用户立即就会投诉。怎么办呢？</p>
+
+<p>答： 可以清除掉 <code>require.cache</code> 的缓存重新 <code>require(xxx)</code>, 视具体情况还可以用 VM 模块重新执行。<br />
+当然这个问题可能是典型的 <a href="https://coolshell.cn/articles/10804.html">X-Y Problem</a>, 使用 <code>js</code> 实现热更新很容易碰到 <code>v8</code> 优化之后各地拿到缓存的引用导致热更新 <code>js</code> 没意义。当然热更新 <code>json</code> 还是可以简单一点比如用读取文件的方式来热更新, 但是这样也不如从 <code>redis</code> 之类的数据库中读取比较合理。</p>
+
+<p>解析：看下文档中对<code>require.cache</code>的定义：</p>
+
+<p>require.cache</p>
+
+<p>被引入的模块将被缓存在这个对象中。从此对象中删除键值对将会导致下一次 <code>require</code> 重新加载被删除的模块。注意不能删除 <code>native addons</code>（原生插件），因为它们的重载将会导致错误。</p>
+
+<pre><code class="language-javascript">//删除指定模块的缓存
+delete require.cache[require.resolve('/*被缓存的模块名称*/')]
+
+// 删除所有模块的缓存
+Object.keys(require.cache).forEach(function(key) {
+     delete require.cache[key];
+})
+</code></pre>
+
+<p>这样王二狗终于挽回了自己的饭碗，他下定决心要把 <code>Node</code> 文档读透。</p>
+
+<h2 id="如果-a-js-require-了-b-js-那么在-b-中定义全局变量-t-111-能否在-a-中直接打印出来">如果 a.js require 了 b.js, 那么在 b 中定义全局变量 t = 111 能否在 a 中直接打印出来?</h2>
+
+<p>每个 <code>.js</code> 能独立一个环境只是因为 <code>node</code> 帮你在外层包了一圈自执行, 所以你使用 <code>t = 111</code> 定义全局变量在其他地方当然能拿到. 情况如下:</p>
+
+<pre><code class="language-javascript">// b.js
+(function (exports, require, module, __filename, __dirname) {
+  t = 111;
+})();
+
+// a.js
+(function (exports, require, module, __filename, __dirname) {
+  // ...
+  console.log(t); // 111
+})();
+</code></pre>
+
+<p>如果想避免，加上<code>use strict</code>就可以了</p>
+
+<pre><code class="language-javascript">// b.js
+(function (exports, require, module, __filename, __dirname) {
+  'use strict'
+  t = 111;
+})();
+</code></pre>
+
+<h2 id="a-js-和-b-js-两个文件互相-require-是否会死循环-双方是否能导出变量-如何从设计上避免这种问题">a.js 和 b.js 两个文件互相 require 是否会死循环? 双方是否能导出变量? 如何从设计上避免这种问题?</h2>
+
+<p>不会, 先执行的导出空对象, 通过导出工厂函数让对方从函数去拿比较好避免. 模块在导出的只是 <code>var module = { exports: {} };</code> 中的 <code>exports</code>, 以从 <code>a.js</code> 启动为例, <code>a.js</code> 还没执行完 <code>exports</code> 就是 <code>{}</code> 在 <code>b.js</code> 的开头拿到的就是 <code>{}</code> 而已.详见<a href="http://nodejs.cn/api/modules.html#modules_cycles">Node文档循环加载</a></p>
+
+<h2 id="exports-和-moudle-exports-的区别">exports 和 moudle.exports 的区别？</h2>
+
+<p>一句话：<code>exports</code> 变量是在模块的文件级别作用域内有效的，它在模块被执行前被赋予 <code>module.exports</code> 的值。<br />
+<code>require()</code> 的假设实现:</p>
+
+<pre><code class="language-javascript">function require(/* ... */) {
+  const module = { exports: {} };
+  ((module, exports) =&gt; {
+    // 模块代码在这。在这个例子中，定义了一个函数。
+    function someFunc() {}
+    exports = someFunc;
+    // 此时，exports 不再是一个 module.exports 的快捷方式，
+    // 且这个模块依然导出一个空的默认对象。
+    module.exports = someFunc;
+    // 此时，该模块导出 someFunc，而不是默认对象。
+  })(module, module.exports);
+  return module.exports;
+}
+</code></pre>
+
+<p><a href="https://cnodejs.org/topic/5734017ac3e4ef7657ab1215">module.exports 与 exports 的区别解释</a><br />
+<a href="http://nodejs.cn/api/modules.html#modules_module_exports">Node文档module.exports定义</a></p>
+</blockquote>
+
+<p>更多面试题请看：<br />
+<a href="https://github.com/ElemeFE/node-interview/blob/master/sections/zh-cn/module.md">饿了么Node面试干货</a></p>
+    </div>
+
+    
+    
+<div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">herozhou工巧</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">2017-10-06</span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+
+    
+    
+
+    <footer class="post-footer">
+      <div class="post-tags">
+          
+          <a href="/tags/node.js/">Node.js</a>
+          
+        </div>
+
+      
+      <nav class="post-nav">
+        
+          <a class="prev" href="/post/node-buffer/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">Node Buffer源码分析</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        
+          <a class="next" href="/post/node-start/">
+            <span class="next-text nav-default">Node 启动过程</span>
+            <span class="prev-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+  <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'blog-herozhou';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+  
+
+  
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:herozhou97@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+  <a href="http://blog.herozhou.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    
+      2017 - 
+    2018
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">herozhou工巧</span>
+  </span>
+</div>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+<script src="/lib/highlight/highlight.pack.js?v=20171001"></script>
+<script type="text/javascript" src="/lib/jquery/jquery-3.2.1.min.js"></script>
+  <script type="text/javascript" src="/lib/slideout/slideout-1.0.1.min.js"></script>
+  <script type="text/javascript" src="/lib/fancybox/jquery.fancybox-3.1.20.min.js"></script>
+<script type="text/javascript" src="/dist/even.min.js?v=2.7.0"></script>
+
+
+<script>
+window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+ga('create', 'UA-111510751-1', 'auto');
+ga('send', 'pageview');
+</script>
+<script async src='//www.google-analytics.com/analytics.js'></script>
+
+
+
+</body>
+</html>

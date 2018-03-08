@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>自顶向下 —— 事件循环的原理 - herozhou工巧</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="herozhou工巧" />
+  <meta name="description" content=" 问题：server.listen(80) 怎么就可以监听事件了？
+ 自顶向下 —— listen(80)和回调函数的调用
+
+" />
+
+  <meta name="keywords" content="herozhou, herozhou工巧, 工巧" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.31.1" />
+
+
+<link rel="canonical" href="http://blog.herozhou.com/post/event-loop-up/" />
+
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="icon" href="/favicon.ico" />
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+
+
+
+
+<link href="/dist/even.min.css?v=2.7.0" rel="stylesheet">
+<link href="/lib/fancybox/jquery.fancybox-3.1.20.min.css" rel="stylesheet">
+
+<meta property="og:title" content="自顶向下 —— 事件循环的原理" />
+<meta property="og:description" content="
+问题：server.listen(80) 怎么就可以监听事件了？
+
+
+自顶向下 —— listen(80)和回调函数的调用
+
+" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://blog.herozhou.com/post/event-loop-up/" />
+
+
+
+<meta property="article:published_time" content="2017-10-14T01:37:56&#43;08:00"/>
+
+<meta property="article:modified_time" content="2017-10-14T01:37:56&#43;08:00"/>
+
+
+
+
+
+
+
+
+
+
+
+<meta itemprop="name" content="自顶向下 —— 事件循环的原理">
+<meta itemprop="description" content="
+问题：server.listen(80) 怎么就可以监听事件了？
+
+
+自顶向下 —— listen(80)和回调函数的调用
+
+">
+
+
+<meta itemprop="datePublished" content="2017-10-14T01:37:56&#43;08:00" />
+<meta itemprop="dateModified" content="2017-10-14T01:37:56&#43;08:00" />
+<meta itemprop="wordCount" content="2994">
+
+
+
+<meta itemprop="keywords" content="Node.js,Node.js事件循环," />
+<meta name="twitter:card" content="summary"/><meta name="twitter:title" content="自顶向下 —— 事件循环的原理"/>
+<meta name="twitter:description" content="
+问题：server.listen(80) 怎么就可以监听事件了？
+
+
+自顶向下 —— listen(80)和回调函数的调用
+
+"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">herozhou工巧</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a><a href="/about/">
+        <li class="mobile-menu-item">About</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">herozhou工巧</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/about/">About</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">自顶向下 —— 事件循环的原理</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2017-10-14 </span>
+        <div class="post-category">
+            
+              <a href="/categories/node.js%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"> Node.js源码分析 </a>
+            
+          </div>
+        <span class="more-meta"> 约 2994 字 </span>
+        <span class="more-meta"> 预计阅读 6 分钟 </span>
+        
+      </div>
+    </header>
+
+    
+    
+<div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li>
+<ul>
+<li><a href="#用户层-app-js">用户层 —— app.js</a></li>
+<li><a href="#socket层-net-js">Socket层 —— net.js</a>
+<ul>
+<li><a href="#设置listen环节-设置onconnection">设置listen环节 ——  设置onconnection</a></li>
+<li><a href="#回调环节-调用onconnection">回调环节 —— 调用onconnection</a></li>
+</ul></li>
+<li><a href="#tcp层-tcp-wrap-cc">TCP层 —— tcp_wrap.cc</a>
+<ul>
+<li><a href="#listen环节-tcpwrap-listen">listen环节 —— TCPWrap::Listen</a></li>
+<li><a href="#回调环节">回调环节</a></li>
+</ul></li>
+<li><a href="#libuv层">libuv层</a>
+<ul>
+<li><a href="#listen环节">listen环节</a></li>
+<li><a href="#回调环节-1">回调环节</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#总结">总结</a>
+<ul>
+<li><a href="#发起-i-o">发起 I/O</a></li>
+<li><a href="#执行回调">执行回调</a></li>
+</ul></li>
+</ul>
+</nav>
+  </div>
+</div>
+
+    
+    <div class="post-content">
+      <blockquote>
+<p>问题：server.listen(80) 怎么就可以监听事件了？</p>
+</blockquote>
+
+<p>自顶向下 —— listen(80)和回调函数的调用</p>
+
+<p></p>
+
+<h2 id="用户层-app-js">用户层 —— app.js</h2>
+
+<p>回到代码中，我们使用了listen(80)怎么就可以监听事件了呢？</p>
+
+<pre><code class="language-javascript">// app.js 
+
+var http = require('http');
+
+function requestListener(req, res) {
+    res.end('hello world');
+}
+
+var server = http.createServer(requestListener);
+server.listen(80);
+</code></pre>
+
+<p>在<code>http.js</code>中<code>createServer</code>创建一个<code>Server</code>对象并返回：</p>
+
+<pre><code class="language-javascript">//node-v8.9.0/lib/http.js
+
+ function createServer(requestListener) {
+  return new Server(requestListener);
+}
+</code></pre>
+
+<p>在<code>_http_server</code>中定义了这个<code>Server</code>类：</p>
+
+<pre><code class="language-javascript">//node-v8.9.0/lib/_http_server.js
+
+function Server(requestListener) {
+  if (!(this instanceof Server)) return new Server(requestListener);
+  net.Server.call(this, { allowHalfOpen: true });
+  
+ if (requestListener) {
+    this.on('request', requestListener);
+  }
+  
+  this.on('connection', connectionListener);
+
+  
+}
+function connectionListener(socket) {
+    parser.onIncoming = parserOnIncoming.bind(undefined, this, socket, state);
+}
+
+function parserOnIncoming(server, socket, state, req, keepAlive) {
+  res.shouldKeepAlive = keepAlive;
+  DTRACE_HTTP_SERVER_REQUEST(req, socket);
+  LTTNG_HTTP_SERVER_REQUEST(req, socket);
+  COUNTER_HTTP_SERVER_REQUEST();
+
+  server.emit('request', req, res);
+}
+ 
+</code></pre>
+
+<ol>
+<li><code>http</code> 层的 <code>Server</code> 类继承了<code>socket层（net.js）</code>的 <code>Server</code> 类。并添加 <code>request</code> 和 <code>connection</code> 事件监听器。</li>
+<li>当有连接到来时， <code>socket</code> 层会触发 <code>connection</code> 事件</li>
+<li>监听着这个事件的<code>http</code> 层函数<code>connectionListener</code> 调用 <code>parserOnIncoming</code> ，拿到来自 <code>socket</code> 层的一个 <code>socket</code> 对象，进行跟 <code>http</code> 协议相关的处理，把 <code>http</code> 请求相关的数据封装成 <code>req</code>、<code>res</code> 两个对象，然后触发 <code>request</code> 事件，把 <code>req、res</code> 传给在 <code>app.js</code> 用户定义的 <code>requestListener</code> 回调函数。</li>
+</ol>
+
+<h2 id="socket层-net-js">Socket层 —— net.js</h2>
+
+<p>net.Server是负责 <code>socket</code> 层的 <code>Server</code> 类：</p>
+
+<pre><code class="language-javascript">// node-v8.9.0/lib/net.js
+
+function Server(options, connectionListener) {
+  if (!(this instanceof Server))
+    return new Server(options, connectionListener);
+
+  EventEmitter.call(this);
+}
+util.inherits(Server, EventEmitter);
+Server.prototype.listen = function(...args) {
+  listenInCluster(this, null, -1, -1, backlogFromArgs);
+}
+function listenInCluster(server, address, port, addressType,
+                         backlog, fd, exclusive) {
+
+  if (cluster.isMaster || exclusive) {
+    // Will create a new handle
+    // _listen2 sets up the listened handle, it is still named like this
+    // to avoid breaking code that wraps this method
+    server._listen2(address, port, addressType, backlog, fd);
+    return;
+  }
+}
+function setupListenHandle(address, port, addressType, backlog, fd) {
+
+  rval = createServerHandle(address, port, addressType, fd);
+  this._handle = rval;
+  this._handle.onconnection = onconnection;
+  this._handle.owner = this;
+}
+
+Server.prototype._listen2 = setupListenHandle;  // legacy alias
+
+function onconnection(err, clientHandle) {
+  var handle = this;
+  var self = handle.owner;
+  var socket = new Socket({
+    handle: clientHandle,
+    allowHalfOpen: self.allowHalfOpen,
+    pauseOnCreate: self.pauseOnConnect
+  });
+  socket.readable = socket.writable = true;
+
+  self.emit('connection', socket);
+}
+
+// node-v8.9.0/lib/net.js
+const { TCP } = process.binding('tcp_wrap');
+
+function createServerHandle(address, port, addressType, fd) {
+
+    handle = new TCP();
+ 
+  return handle;
+}
+
+</code></pre>
+
+<h3 id="设置listen环节-设置onconnection">设置listen环节 ——  设置onconnection</h3>
+
+<p>A. 设置listen环节
+<code>Server.prototype.listen() -&gt; listenInCluster() -&gt; server._listen2()</code>
+而<code>server._listen2()</code>就是<code>setupListenHandle</code>函数，它创建了一个 <code>TCP</code>类对象(注意了TCP不是C++本身的类，而是C++用来表示js类的  <code>FunctionTemplate</code> )赋值给<code>this._handle</code>，并给它的<code>onconnection</code>属性赋上<code>onconnection</code>回调函数。</p>
+
+<h3 id="回调环节-调用onconnection">回调环节 —— 调用onconnection</h3>
+
+<p>当有连接到来时，底层回调了TCP类的<code>onconnection</code>函数（self._handle.onconnection），并传过来一个 <code>clientHandle</code>，<code>onconnection</code> 把 <code>clientHandle</code> 封装成 <code>socket</code> 对象，并触发 <code>connection</code> 事件，把 <code>socket</code> 传给上层的 <code>connectionListener</code> 监听器。</p>
+
+<h2 id="tcp层-tcp-wrap-cc">TCP层 —— tcp_wrap.cc</h2>
+
+<p>上面说到 <code>socket</code> 层的 <code>Server</code> 类与下层的交互是通过 <code>this._handle</code> —— TCP类对象。</p>
+
+<pre><code>// node-v8.9.0/src/tcp_wrap.cc
+
+Local&lt;String&gt; tcpString = FIXED_ONE_BYTE_STRING(env-&gt;isolate(), &quot;TCP&quot;);
+
+//  创建一个函数模板，在js文件中使用 TCP 表示这个类
+Local&lt;FunctionTemplate&gt; t = env-&gt;NewFunctionTemplate(New);
+t-&gt;InstanceTemplate()-&gt;Set(env-&gt;onconnection_string(), Null(env-&gt;isolate()));
+ 
+ // 将方法设置到函数模板的原型上
+  env-&gt;SetProtoMethod(t, &quot;open&quot;, Open);
+  env-&gt;SetProtoMethod(t, &quot;bind&quot;, Bind);
+  env-&gt;SetProtoMethod(t, &quot;listen&quot;, Listen);
+  env-&gt;SetProtoMethod(t, &quot;connect&quot;, Connect);
+
+
+void TCPWrap::Listen(const FunctionCallbackInfo&lt;Value&gt;&amp; args) {
+  TCPWrap* wrap;
+  ASSIGN_OR_RETURN_UNWRAP(&amp;wrap,
+                          args.Holder(),
+                          args.GetReturnValue().Set(UV_EBADF));
+  int backlog = args[0]-&gt;Int32Value();
+  
+  int err = uv_listen(reinterpret_cast&lt;uv_stream_t*&gt;(&amp;wrap-&gt;handle_),
+                      backlog,
+                      OnConnection);
+                      
+  args.GetReturnValue().Set(err);
+}
+</code></pre>
+
+<h3 id="listen环节-tcpwrap-listen">listen环节 —— TCPWrap::Listen</h3>
+
+<p>看到 <code>TCP</code> 这一层，执行 <code>listen</code> 时传给下层的回调函数是 <code>OnConnection</code>，而且可以看到与这一层交互的下一层就是。
+.<code>TCP</code>层使用 <code>libuv</code> 的接口 —— <code>uv_listen</code> 监听到来的连接
+<a href="http://docs.libuv.org/en/v1.x/stream.html#c.uv_listen">libuv文档</a>对uv_listen的定义：
+&gt; 开始监听传入的连接。 backlog表示内核可能排队的连接数。 当收到新的传入连接时，会调用<code>uv_connection_cb</code>回调。</p>
+
+<p>注意到<code>t-&gt;InstanceTemplate()-&gt;Set(env-&gt;onconnection_string(),Null(env-&gt;isolate()));</code>这段代码将函数模版t的类属性 <code>onconnection</code> 被设置成了 <code>null</code> 。在上文执行<code>this._handle.onconnection = onconnection;</code>才将其设置成了真正有效的函数。</p>
+
+<h3 id="回调环节">回调环节</h3>
+
+<p>.<code>OnConnection</code>：使用来执行js的函数</p>
+
+<pre><code>// node-v8.9.0/src/connection_wrap.cc
+void ConnectionWrap&lt;WrapType, UVType&gt;::OnConnection(uv_stream_t* handle,
+                                                    int status) {
+ // 得到客户端传来的stream流数据并转化类型
+ WrapType* wrap_data = static_cast&lt;WrapType*&gt;(handle-&gt;data);
+ 
+  if (status == 0) {
+    // 得到客户端，如果失败返回&lt;0的值
+    if (uv_accept(handle, client_handle))
+      return;
+     
+    // 将客户端对象赋值给handle
+    argv[1] = client_obj;
+  }
+  
+  // 调用回调函数并传入数据
+  wrap_data-&gt;MakeCallback(env-&gt;onconnection_string(), arraysize(argv), argv);
+}
+
+关于MakeCallback的实现在AsyncWrap类 —— TCPWrap的基类：
+// node-v8.9.0/src/async_wrap.cc
+MaybeLocal&lt;Value&gt; AsyncWrap::MakeCallback(const Local&lt;Function&gt; cb,
+                                          int argc,
+                                          Local&lt;Value&gt;* argv) {
+  async_context context { get_async_id(), get_trigger_async_id() };
+  return InternalMakeCallback(env(), object(), cb, argc, argv, context);
+}
+// node-v8.9.0/src/node.cc
+MaybeLocal&lt;Value&gt; InternalMakeCallback(Environment* env,
+                                       Local&lt;Object&gt; recv,
+                                       const Local&lt;Function&gt; callback,
+                                       int argc,
+                                       Local&lt;Value&gt; argv[],
+                                       async_context asyncContext) {
+  
+  
+    ret = callback-&gt;Call(env-&gt;context(), recv, argc, argv);
+}
+</code></pre>
+
+<p>当新的客户端连接到来时，<code>libuv</code>的 <code>uv_listen</code>监听到连接并调用回调函数 <code>OnConnection</code> ，在该函数内执行 <code>uv_accept</code> 接收连接
+<a href="http://docs.libuv.org/en/v1.x/stream.html#c.uv_accept">libuv文档</a>对<code>uv_accept</code>的定义：
+&gt; 这个函数与uv_listen（）一起使用来接受传入的连接。 在接收到uv_connection_cb接受连接后调用此函数。 在调用这个函数之前，客户端句柄必须被初始化。 &lt;0返回值表示错误。</p>
+
+<p>最后将js层的回调函数 <code>onconnection</code> (保存在 <code>env-&gt;onconnection_string()</code> )和接收到的客户端 <code>stream</code> 数据传入 <code>MakeCallback</code> 中。在 <code>MakeCallback</code> 中执行js层的 <code>onconnection</code> 函数。</p>
+
+<h2 id="libuv层">libuv层</h2>
+
+<p>在app.js里面的server.listen(80)，通过http.Server -&gt; net.Server -&gt; TCPWrap，终于到达了libuv层。这一层，我们看到6.1节的数据结构的使用细节。关于io观察者如何被保存、如何被事件循环取出使用的细节，我们看6.3节。</p>
+
+<pre><code>int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
+  int err;
+
+  switch (stream-&gt;type) {
+  case UV_TCP:
+    err = uv_tcp_listen((uv_tcp_t*)stream, backlog, cb);
+    break;
+
+  case UV_NAMED_PIPE:
+    err = uv_pipe_listen((uv_pipe_t*)stream, backlog, cb);
+    break;
+
+  default:
+    err = -EINVAL;
+  }
+
+}
+
+int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
+  static int single_accept = -1;
+  int err;
+  tcp-&gt;connection_cb = cb;
+  tcp-&gt;flags |= UV_HANDLE_BOUND;
+
+  /* Start listening for connections. */
+  tcp-&gt;io_watcher.cb = uv__server_io;
+  uv__io_start(tcp-&gt;loop, &amp;tcp-&gt;io_watcher, POLLIN);
+
+  return 0;
+}
+
+void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+  
+  uv__io_start(stream-&gt;loop, &amp;stream-&gt;io_watcher, POLLIN);
+
+  /* connection_cb can close the server socket while we're
+   * in the loop so check it on each iteration.
+   */
+  while (uv__stream_fd(stream) != -1) {
+   
+    err = uv__accept(uv__stream_fd(stream));
+ 
+    stream-&gt;accepted_fd = err;
+    stream-&gt;connection_cb(stream, 0);
+
+  
+  }
+}
+</code></pre>
+
+<h3 id="listen环节">listen环节</h3>
+
+<p>看到 <code>uv_tcp_listen</code> 函数，它是 <code>uv_listen</code> 的具体实现。通过调用 <code>uv__io_start</code> 把自身的 <code>io_watcher</code> 注册进 <code>tcp-&gt;loop</code>（理解为 <code>default_loop_struct</code> —— 事件循环的数据结构）。
+这里注意到，从上层传过来的 <code>cb</code> 回调函数也就是 <code>TCPWrap::OnConnection</code> 保存在了 <code>tcp-&gt;connection_cb</code> ，而 <code>tcp-&gt;io_watcher.cb</code> 保存的是  <code>uv__server_io</code>。</p>
+
+<h3 id="回调环节-1">回调环节</h3>
+
+<p>当有连接到来时，事件循环直接调用的cb是 <code>tcp-&gt;io_watcher.cb</code>，也就是 <code>uv__server_io</code>，先执行 <code>uv__io_start</code>将 <code>stream-&gt;io_watcher</code> 注册进事件循环。当有stream数据到来时 <code>uv__accept</code> 拿到到来的连接，再调用 <code>stream-&gt;connection_cb</code> 并传入到来的stream数据。( )
+再疏通一下这里比较绕的地方:</p>
+
+<p><code>stream-&gt;connection_cb</code> 也就是<code>tcp-&gt;connection_cb</code>，而 <code>tcp-&gt;connection_cb = cb;</code> 这行代码指明<code>tcp-&gt;connection_cb</code>就是传进来的<code>OnConnection</code>函数。</p>
+
+<p>所以 <code>stream-&gt;connection_cb</code> 就是 <code>OnConnection</code> 函数。</p>
+
+<p>这里提一下：
+&gt; uv_tcp_t is a ‘subclass’ of uv_stream_t.</p>
+
+<p>TCP 是一种面向连接的流式协议, 因此是基于 libuv 的流式基础架构上的.
+所以uv_tcp_t 是 uv_stream_t 的一个子类</p>
+
+<p>最后看下 <code>uv__io_start</code> 函数把 I/O 观察者保存到指定的事件循环数据结构 —— loop。来看看 <code>uv__io_start</code> 的细节：</p>
+
+<pre><code>
+void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+  ...
+  
+  if (QUEUE_EMPTY(&amp;w-&gt;watcher_queue))
+    QUEUE_INSERT_TAIL(&amp;loop-&gt;watcher_queue, &amp;w-&gt;watcher_queue);
+
+  if (loop-&gt;watchers[w-&gt;fd] == NULL) {
+    loop-&gt;watchers[w-&gt;fd] = w;
+    loop-&gt;nfds++;
+  }
+}
+
+</code></pre>
+
+<p>这里的loop就是事件循环数据结构体(例如<code>tcp-&gt;loop</code>)，w就是I/O观察者结构体(例如<code>tcp-&gt;io_watcher.cb</code>)。</p>
+
+<p>可以看到，添加一个io观察者需要两步操作：</p>
+
+<p>使用 <code>QUEUE_INSERT_TAIL</code> 往 <code>loop-&gt;watcher_queue</code> 添加 I/O 观察者。
+把 I/O 观察者保存在 <code>loop-&gt;watchers</code> 中 —— 以fd文件描述符为索引的数组。<code>loop-&gt;watchers</code> 实际上类似于映射表的功能，而不是观察者队列</p>
+
+<h1 id="总结">总结</h1>
+
+<h2 id="发起-i-o">发起 I/O</h2>
+
+<ul>
+<li>用户在 <code>Javascript</code> 代码引入底层模块，v8引擎加载 <code>Node</code> 核心模块(C++)，将参数和回调函数传入到核心模块</li>
+<li>Node 核心模块(C++)会将传入的参数和回调函数封装成一个请求对象(request)</li>
+<li>将这个请求对象推入到 I/O 线程池等待执行</li>
+<li><code>Javascript</code> 发起的异步调用结束，<code>Javascript</code> 线程继续执行后续操作。</li>
+</ul>
+
+<h2 id="执行回调">执行回调</h2>
+
+<ul>
+<li>I/O 操作完成后，会将结果储存到请求对象的 <code>result</code> 属性上，并发出操作完成的通知</li>
+<li>每次事件循环时会检查是否有完成的 I/O 操作，如果有就将请求对象加入到 I/O 观察者队列中，之后当做事件处理；</li>
+<li>处理 I/O 观察者事件时，会取出之前封装在请求对象中的回调函数，执行这个回调函数，并将 <code>result</code> 当参数，以完成 <code>Javascript</code> 回调。</li>
+</ul>
+    </div>
+
+    
+    
+<div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">herozhou工巧</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">2017-10-14</span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+
+    
+    
+
+    <footer class="post-footer">
+      <div class="post-tags">
+          
+          <a href="/tags/node.js/">Node.js</a>
+          
+          <a href="/tags/node.js%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF/">Node.js事件循环</a>
+          
+        </div>
+
+      
+      <nav class="post-nav">
+        
+          <a class="prev" href="/post/nexttick-setimmediate/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">process.nextTick setImmediate 的区别</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        
+          <a class="next" href="/post/english-preview/">
+            <span class="next-text nav-default">自底向上 —— 事件循环的原理</span>
+            <span class="prev-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+  <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'blog-herozhou';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+  
+
+  
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:herozhou97@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+  <a href="http://blog.herozhou.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    
+      2017 - 
+    2018
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">herozhou工巧</span>
+  </span>
+</div>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+<script src="/lib/highlight/highlight.pack.js?v=20171001"></script>
+<script type="text/javascript" src="/lib/jquery/jquery-3.2.1.min.js"></script>
+  <script type="text/javascript" src="/lib/slideout/slideout-1.0.1.min.js"></script>
+  <script type="text/javascript" src="/lib/fancybox/jquery.fancybox-3.1.20.min.js"></script>
+<script type="text/javascript" src="/dist/even.min.js?v=2.7.0"></script>
+
+
+<script>
+window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+ga('create', 'UA-111510751-1', 'auto');
+ga('send', 'pageview');
+</script>
+<script async src='//www.google-analytics.com/analytics.js'></script>
+
+
+
+</body>
+</html>

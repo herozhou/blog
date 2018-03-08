@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Node 启动过程 - herozhou工巧</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="herozhou工巧" />
+  <meta name="description" content=" 问题引入 node app.js 做了什么?为什么可以将我们的代码运行起来？
+ 
+" />
+
+  <meta name="keywords" content="herozhou, herozhou工巧, 工巧" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.31.1" />
+
+
+<link rel="canonical" href="http://blog.herozhou.com/post/node-start/" />
+
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="icon" href="/favicon.ico" />
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+
+
+
+
+<link href="/dist/even.min.css?v=2.7.0" rel="stylesheet">
+<link href="/lib/fancybox/jquery.fancybox-3.1.20.min.css" rel="stylesheet">
+
+<meta property="og:title" content="Node 启动过程" />
+<meta property="og:description" content="
+问题引入 node app.js 做了什么?为什么可以将我们的代码运行起来？
+
+
+" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://blog.herozhou.com/post/node-start/" />
+
+
+
+<meta property="article:published_time" content="2017-10-01T01:37:56&#43;08:00"/>
+
+<meta property="article:modified_time" content="2017-10-03T01:37:56&#43;08:00"/>
+
+
+
+
+
+
+
+
+
+
+
+<meta itemprop="name" content="Node 启动过程">
+<meta itemprop="description" content="
+问题引入 node app.js 做了什么?为什么可以将我们的代码运行起来？
+
+
+">
+
+
+<meta itemprop="datePublished" content="2017-10-01T01:37:56&#43;08:00" />
+<meta itemprop="dateModified" content="2017-10-01T01:37:56&#43;08:00" />
+<meta itemprop="wordCount" content="3863">
+
+
+
+<meta itemprop="keywords" content="Node.js," />
+<meta name="twitter:card" content="summary"/><meta name="twitter:title" content="Node 启动过程"/>
+<meta name="twitter:description" content="
+问题引入 node app.js 做了什么?为什么可以将我们的代码运行起来？
+
+
+"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">herozhou工巧</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a><a href="/about/">
+        <li class="mobile-menu-item">About</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">herozhou工巧</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/about/">About</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Node 启动过程</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2017-10-01 </span>
+        <div class="post-category">
+            
+              <a href="/categories/node.js%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"> Node.js源码分析 </a>
+            
+          </div>
+        <span class="more-meta"> 约 3863 字 </span>
+        <span class="more-meta"> 预计阅读 8 分钟 </span>
+        
+      </div>
+    </header>
+
+    
+    
+<div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#入口文件-node-main-cc">入口文件 —— node_main.cc</a>
+<ul>
+<li><a href="#启动函数-node-start">启动函数 —— node::Start()</a></li>
+<li><a href="#v8-概念">V8 概念</a>
+<ul>
+<li><a href="#isolate-实例">Isolate(实例)</a></li>
+<li><a href="#handle-概念">Handle 概念</a></li>
+<li><a href="#scope">Scope</a></li>
+<li><a href="#context-概念">Context 概念</a></li>
+</ul></li>
+<li><a href="#执行js代码-loadenvironment">执行js代码 —— LoadEnvironment</a></li>
+<li><a href="#javascript入口文件-bootstrap-node-js">JavaScript入口文件 —— bootstrap_node.js</a></li>
+<li><a href="#加载模块核心文件-module">加载模块核心文件 —— Module</a></li>
+</ul></li>
+<li><a href="#总结">总结</a></li>
+<li><a href="#精选面试题">精选面试题</a></li>
+</ul>
+</nav>
+  </div>
+</div>
+
+    
+    <div class="post-content">
+      <blockquote>
+<p>问题引入 node app.js 做了什么?为什么可以将我们的代码运行起来？</p>
+</blockquote>
+
+<p></p>
+
+<p>文件这么多我们先要从入口文件 <code>node_main.cc</code> 入手</p>
+
+<h1 id="入口文件-node-main-cc">入口文件 —— node_main.cc</h1>
+
+<pre><code>// node-v8.9.0/src/node_main.cc
+
+int wmain(int argc, wchar_t *wargv[]) {
+  if (!IsWindows7OrGreater()) {
+    fprintf(stderr, &quot;This application is only supported on Windows 7, &quot;
+                    &quot;Windows Server 2008 R2, or higher.&quot;);
+    exit(ERROR_EXE_MACHINE_TYPE_MISMATCH);
+  }
+  
+  ... 
+  // Convert argv to to UTF8
+  ...
+  
+  // Now that conversion is done, we can finally start.
+  return node::Start(argc, argv);
+}
+</code></pre>
+
+<p>判断了一下是否是低版本的 <code>windows</code> 操作系统，将传入的命令行参数转成UTF-8编码。最后启动 <code>node::Start()</code></p>
+
+<p>看下 <code>node::Start()</code> 函数的源码</p>
+
+<h2 id="启动函数-node-start">启动函数 —— node::Start()</h2>
+
+<pre><code>// node-v6.11.5/src/node.cc 
+int Start(int argc, char** argv) {
+  PlatformInit();
+  
+  ...
+  
+ 
+  v8_platform.Initialize(v8_thread_pool_size, uv_default_loop());
+  V8::Initialize();
+  const int exit_code =
+  
+      //调用重载函数Start
+      Start(uv_default_loop(), argc, argv, exec_argc, exec_argv);
+  ...
+}
+
+inline int Start(uv_loop_t* event_loop,
+                 int argc, const char* const* argv,
+                 int exec_argc, const char* const* exec_argv) {
+
+  int exit_code;
+  {
+   // 加上锁
+    Locker locker(isolate);
+    // 根据当前实例创建作用域
+    Isolate::Scope isolate_scope(isolate);
+    // 创建句柄作用域
+    HandleScope handle_scope(isolate);
+    // 初始化实例数据
+    IsolateData isolate_data(isolate, event_loop, allocator.zero_fill_field());
+    // 调用另一个重载函数Start
+    exit_code = Start(isolate, &amp;isolate_data, argc, argv, exec_argc, exec_argv);
+  }
+  return exit_code;
+}
+
+inline int Start(Isolate* isolate, IsolateData* isolate_data,
+                 int argc, const char* const* argv,
+                 int exec_argc, const char* const* exec_argv) {
+   // 创建句柄作用域
+  HandleScope handle_scope(isolate);
+  // 创建上下文
+  Local&lt;Context&gt; context = Context::New(isolate);
+  // 创建运行上下文
+  Context::Scope context_scope(context);
+  // 声明环境对象
+  Environment env(isolate_data, context);
+  
+  ...
+    Environment::AsyncCallbackScope callback_scope(&amp;env);
+    //初始化环境
+    LoadEnvironment(&amp;env);
+  ...
+    事件循环（后面章节会分析）
+  ...
+}
+</code></pre>
+
+<p>我们看到有三个 <code>Start</code> 函数，通过重载形成调用过程。</p>
+
+<h2 id="v8-概念">V8 概念</h2>
+
+<p>注意出现的几个概念：<code>Isolate</code>、<code>Handle</code>、<code>Scope</code>、<code>Context</code>。江陵老师的著作已经讲的很好了 <a href="https://yjhjstz.gitbooks.io/deep-into-node/content/chapter2/chapter2-0.html">V8概念</a>，这里引用一下</p>
+
+<h3 id="isolate-实例">Isolate(实例)</h3>
+
+<blockquote>
+<p>An isolate is a VM instance with its own heap. It represents an isolated instance of the V8 engine.
+V8 isolates have completely separate states. Objects from one isolate must not be used in other isolates.</p>
+</blockquote>
+
+<p><code>Isolate</code> 代表了一个v8引擎的实例。每一个 <code>Isolate</code> 维护自己内部的状态。 <code>Isolate</code> 内创建的js对象无法在另一个 <code>Isolate</code> 中使用， <code>v8</code> 允许创建多个 <code>Isolate</code> 并使它们并行运行在多个线程中。同一个 <code>Isolate</code> 同一时间只能在单个线程内运行。并且要求使用 <code>Locker/Unlocker</code> 使他们同步执行
+一个 <code>Isolate</code> 是一个独立的虚拟机。对应一个或多个线程。但同一时刻 只能被一个线程进入。所有的 <code>Isolate</code> 彼此之间是完全隔离的, 它们不能够有任何共享的资源。如果不显示创建 <code>Isolate</code>, 会自动创建一个默认的 <code>Isolate</code>。</p>
+
+<p>后面提到的 <code>Context、Scope、Handle</code> 的概念都是一个 <code>Isolate</code> 内部的</p>
+
+<h3 id="handle-概念">Handle 概念</h3>
+
+<p>在 <code>V8</code> 中，内存分配都是在 <code>V8</code> 的 <code>Heap</code> 中进行分配的，<code>JavaScript</code> 的值和对象也都存放在 <code>V8</code> 的 <code>Heap</code> 中。这个 <code>Heap</code> 由 <code>V8</code> 独立的去维护，失去引
+用的对象将会被 <code>V8</code> 的 <code>GC</code> 掉并可以重新分配给其他对象。而 <code>Handle</code> 即是对 <code>Heap</code> 中对象的引用。<code>V8</code> 为了对内存分配进行管理，<code>GC</code> 需要对 <code>V8</code> 中的
+所有对象进行跟踪，而对象都是用 Handle 方式引用的，所以 <code>GC</code> 需要对 <code>Handle</code> 进行管理，这样 <code>GC</code> 就能知道 <code>Heap</code> 中一个对象的引用情况，当一个对象的 <code>Handle</code> 引用发生改变的时候，<code>GC</code> 即可对该对象进行回收或者移动。因此，<code>V8</code> 编程中必须使用 <code>Handle</code> 去引用一个对象，而不是直接通过 <code>C
+++</code> 的方式去获取对象的引用，直接通过 <code>C++</code> 的方式去引用一个对象，会使得该对象无法被 V8 管理。</p>
+
+<p><code>Handle</code> 分为 <code>Local</code> 和 <code>Persistent</code> 两种。</p>
+
+<p>从字面上就能知道，<code>Local</code> 是局部的，它同时被 <code>HandleScope</code> 进行管理。
+<code>persistent</code>，类似与全局的，不受 <code>HandleScope</code> 的管理，其作用域可以延伸到不同的函数，而 <code>Local</code> 是局部的，作用域比较小。
+<code>Persistent Handle</code> 对象需要 <code>Persistent::New</code>, <code>Persistent::Dispose</code> 配对使用，类似于 <code>C++</code> 中 <code>new</code> 和 <code>delete</code>。</p>
+
+<p><code>Persistent::MakeWeak</code> 可以用来弱化一个 <code>Persistent Handle</code>，如果一个对象的唯一引用 <code>Handle</code> 是一个 <code>Persistent</code>，则可以使用 <code>MakeWeak</code> 方法来弱化该引用，该方法可以触发 <code>GC</code> 对被引用对象的回收。</p>
+
+<h3 id="scope">Scope</h3>
+
+<p>从概念上理解，作用域可以看成是一个句柄的容器，在一个作用域里面可以有很多很多个句柄（也就是说，一个 <code>scope</code> 里面可以包含很多很多个
+<code>v8</code> 引擎相关的对象），句柄指向的对象是可以一个一个单独地释放的，但是很多时候（真正开始写业务代码的时候），一个一个地释放句柄过于
+繁琐，取而代之的是，可以释放一个 <code>scope</code>，那么包含在这个 <code>scope</code> 中的所有 <code>handle</code> 就都会被统一释放掉了。</p>
+
+<p><code>Scope</code> 在 <code>v8.h</code> 中有这么几个：<code>HandleScope</code>，<code>Context::Scope</code>。</p>
+
+<p><code>HandleScope</code> 是用来管理 <code>Handle</code> 的，而 <code>Context::Scope</code> 仅仅用来管理 <code>Context</code> 对象。</p>
+
+<p>代码像下面这样：</p>
+
+<pre><code class="language-c++">  // 在此函数中的 Handle 都会被 handleScope 管理
+  HandleScope handleScope;
+  // 创建一个 js 执行环境 Context
+  Handle&lt;Context&gt; context = Context::New();
+  Context::Scope contextScope(context);
+  // 其它代码
+</code></pre>
+
+<p>一般情况下，函数的开始部分都放一个 <code>HandleScope</code>，这样此函数中的 <code>Handle</code> 就不需要再理会释放资源了。
+而 <code>Context::Scope</code> 仅仅做了：在构造中调用 <code>context-&gt;Enter()</code>，而在析构函数中调用 <code>context-&gt;Leave()</code>。</p>
+
+<h3 id="context-概念">Context 概念</h3>
+
+<p>从概念上讲，这个上下文环境也可以理解为运行环境。在执行 <code>Javascript</code> 脚本的时候，总要有一些环境变量或者全局函数。
+我们如果要在自己的 <code>c++</code> 代码中嵌入 <code>v8</code> 引擎，自然希望提供一些 <code>c++</code> 编写的函数或者模块，让其他用户从脚本中直接调用，这样才会体现出 <code>Javascript</code> 的强大。
+我们可以用 <code>c++</code> 编写全局函数或者类，让其他人通过 <code>Javascript</code> 进行调用，这样，就无形中扩展了 <code>Javascript</code> 的功能。</p>
+
+<p><code>Context</code> 可以嵌套，即当前函数有一个 <code>Context</code>，调用其它函数时如果又有一个 <code>Context</code>，则在被调用的函数中 <code>Javascript</code> 是以最近的
+<code>Context</code> 为准的，当退出这个函数时，又恢复到了原来的 <code>Context</code>。</p>
+
+<p>我们可以往不同的 <code>Context</code> 里 “导入” 不同的全局变量及函数，互不影响。据说设计 <code>Context</code> 的最初目的是为了让浏览器在解析 <code>HTML</code> 的 <code>iframe</code>
+时，让每个 <code>iframe</code> 都有独立的 <code>Javascript</code> 执行环境，即一个 <code>iframe</code> 对应一个 <code>Context</code>。</p>
+
+<h2 id="执行js代码-loadenvironment">执行js代码 —— LoadEnvironment</h2>
+
+<p>重要的是<code>LoadEnvironment</code>函数:</p>
+
+<pre><code>// node-v8.9.0/src/node.cc
+void LoadEnvironment(Environment* env) {
+  HandleScope handle_scope(env-&gt;isolate());
+
+  ...
+
+  // Execute the lib/internal/bootstrap_node.js file which was included as a
+  // static C string in node_natives.h by node_js2c.
+  // 'internal_bootstrap_node_native' is the string containing that source code.
+  // （译）通过node_js2c执行在被当作C字符串的lib/internal/bootstrap_node.js 文件
+  Local&lt;String&gt; script_name = FIXED_ONE_BYTE_STRING(env-&gt;isolate(),
+                                                    &quot;bootstrap_node.js&quot;);
+  Local&lt;Value&gt; f_value = ExecuteString(env, MainSource(env), script_name);
+
+  // The bootstrap_node.js file returns a function 'f'
+  // (译)  bootstrap_node.js 返回一个函数 'f'
+  CHECK(f_value-&gt;IsFunction());
+  
+  //转换类型
+  Local&lt;Function&gt; f = Local&lt;Function&gt;::Cast(f_value);
+
+  // Add a reference to the global object
+  // （译）添加一个引用到全局变量中
+  Local&lt;Object&gt; global = env-&gt;context()-&gt;Global();
+
+  ...
+
+  // Expose the global object as a property on itself
+  // (Allows you to set stuff on `global` from anywhere in JavaScript.)
+  // （译）将全局变量暴露为它自己的一个属性，允许你从JavaScript的任何地方设置属性到global上
+  global-&gt;Set(FIXED_ONE_BYTE_STRING(env-&gt;isolate(), &quot;global&quot;), global);
+
+  // Now we call 'f' with the 'process' variable that we've built up with
+  // all our bindings. Inside bootstrap_node.js and internal/process we'll
+  // take care of assigning things to their places.
+  // （假的翻译）现在我们可以使用我们已经编译好的process变量调用'f'（call with是使用...调用吗？）
+  // （假的翻译）在bootstrap_node.js和internal/process 里面我们会关心把事情分配给他们的地方。
+    
+    
+  // We start the process this way in order to be more modular. Developers
+  // who do not like how bootstrap_node.js sets up the module system but do
+  // like Node's I/O bindings may want to replace 'f' with their own function.
+  // （译）我们以这种方式启动进程会更模块化，不喜欢 bootstrap_node.js 新设置模块系统
+  // （译）但是喜欢Node's I/O bindings 的开发者可能想用他们自己的函数取代 'f'。
+  
+  Local&lt;Value&gt; arg = env-&gt;process_object();
+  f-&gt;Call(Null(env-&gt;isolate()), 1, &amp;arg);
+}
+
+
+// Executes a str within the current v8 context.
+//（译）在当前v8上下文中执行一个字符串
+static Local&lt;Value&gt; ExecuteString(Environment* env,
+                                  Local&lt;String&gt; source,
+                                  Local&lt;String&gt; filename) {
+  
+ // 编译字符串为脚本
+ MaybeLocal&lt;v8::Script&gt; script =
+      v8::Script::Compile(env-&gt;context(), source, &amp;origin);
+
+ // 执行脚本
+  Local&lt;Value&gt; result = script.ToLocalChecked()-&gt;Run();
+  
+  ...
+  
+  return scope.Escape(result);
+}
+</code></pre>
+
+<p>有如下调用逻辑：这几个函数都在node.cc中</p>
+
+<pre><code>Start() --&gt; Start() --&gt; Start() --&gt; LoadEnvironment() --&gt; ExecuteString()
+</code></pre>
+
+<p>最后的<code>ExecuteString(env, MainSource(env), script_name)</code> 函数，传入当前环境、上文提到过的<code>MainSource</code>编译之后的源码、脚本名称，在函数体里调用V8的 <code>Script::Compile()</code> 和 <code>Run()</code>两个接口去解析执行<code>bootstrap_node.js</code>文件，返回值是一个<code>f_value</code>。  <code>f_value</code> 就是下面<code>bootstrap_node.js</code>中的匿名函数。</p>
+
+<p>而这个<code>f_value</code> 通过V8的接口 <code>Local&lt;Function&gt;::Cast</code>转换成一个<code>Local&lt;Function&gt;</code>类型的变量<code>f</code> ，而<code>Local&lt;Function&gt;</code>类型是V8中表示一个函数的C++类型。
+在<code>LoadEnvironment()</code>的最后一行通过 <code>f-&gt;Call()</code>，去执行<code>bootstrap_node.js</code>，进入了js的世界。</p>
+
+<h2 id="javascript入口文件-bootstrap-node-js">JavaScript入口文件 —— bootstrap_node.js</h2>
+
+<p>而 <code>bootstrap_node.js</code> 文件在下章会具体讲，这里看下大致源码：</p>
+
+<pre><code class="language-javascript">//终于遇见了我们最熟悉的JavaScript代码
+// node-v8.9.0/lib/internal/bootstrap_node.js
+
+(function(process) {
+
+  function startup(){
+     ...
+     
+     if (process.argv[1] &amp;&amp; process.argv[1] !== '-') {
+        // make process.argv[1] into a full path
+     // make process.argv[1] into a full path
+        const path = NativeModule.require('path');
+        process.argv[1] = path.resolve(process.argv[1]);
+
+        const Module = NativeModule.require('module');
+        
+        preloadModules();
+        Module.runMain();
+      }
+      
+     ...
+  };
+ startup();
+});
+ 
+</code></pre>
+
+<p>这个<code>process.argv[1]</code>就是node命令行启动的时候，main函数接收的参数。比如<code>node  app.js</code>启动，<code>process.argv[1]</code>就保存着我们的JavaScript文件名 <code>app.js</code> 了。而 <code>NativeModule</code> 是Node提供加载模块的一个构造函数（类），它可以加载内置的 <code>JavaScript</code> 模块，这里加载了 <code>module</code>模块，也是一个加载模块的构造函数（类）,两者的区别在于 <code>NativeModule</code> 加载的是内置模块，<code>Module</code> 加载的是所有模块或文件（ *.js，*.json,*.node）。</p>
+
+<p>看下<code>Module.runMain</code>做了什么</p>
+
+<h2 id="加载模块核心文件-module">加载模块核心文件 —— Module</h2>
+
+<pre><code class="language-javascript">// node-v8.9.0/lib/module.js
+
+// bootstrap main module.
+Module.runMain = function() {
+  // Load the main module--the command line argument.
+  Module._load(process.argv[1], null, true);
+  // Handle any nextTicks added in the first tick of the program
+  process._tickCallback();
+};
+
+Module._load = function(request, parent, isMain) {
+  
+  //简化了一些判断是否是内置模块的代码，这里只贴出加载代码的一部分
+  // 具体源码会在下篇剖析
+  ...
+  var filename = Module._resolveFilename(request, parent, isMain);
+  var module = new Module(filename, parent);
+  tryModuleLoad(module, filename);
+ 
+  ...
+  return module.exports;
+};
+
+function tryModuleLoad(module, filename) {
+
+    ...
+    module.load(filename);
+}
+Module.prototype.load = function(filename) {
+ 
+  var extension = path.extname(filename) || '.js';
+  if (!Module._extensions[extension]) extension = '.js';
+  
+  Module._extensions[extension](this, filename);
+ 
+};
+// Native extension for .js
+Module._extensions['.js'] = function(module, filename) {
+
+  //从本地同步读取文件
+  var content = fs.readFileSync(filename, 'utf8');
+  module._compile(internalModule.stripBOM(content), filename);
+};
+
+Module.prototype._compile = function(content, filename) {
+
+  // create wrapper function
+  var wrapper = Module.wrap(content);
+
+  //在当前上下文运行这个文件
+  var compiledWrapper = vm.runInThisContext(wrapper, {
+    filename: filename,
+    lineOffset: 0,
+    displayErrors: true
+  });
+  
+  return result;
+};
+</code></pre>
+
+<p>调用逻辑是</p>
+
+<pre><code>runMain()-&gt;_load()-&gt;tryModuleLoad()-&gt;load()-&gt;_extensions()-
+-&gt;_compile() -&gt;runInThisContext() 
+</code></pre>
+
+<p><code>var content = fs.readFileSync(filename, 'utf8');</code>从本地同步读取（在这里是<code>app.js</code>)文件,经过<code>Module.wrap(content)</code>包装之后(包装原理我们会在下篇讲)，<code>runInThisContext()</code>在当前上下文执行这个代码，也就是我们的<code>app.js</code>。这样我们的应用就启动起来了。</p>
+
+<h1 id="总结">总结</h1>
+
+<p>Node启动过程:</p>
+
+<ol>
+<li>输入命令行命令：node app.js</li>
+<li>初始化v8引擎</li>
+<li>初始化线程池和事件循环队列</li>
+<li>初始化运行环境</li>
+<li>取出被转化为C++ ASCII码值数组的 <code>bootstrap_node.js</code> 文件，转换为字符串。</li>
+<li>编译执行转换之后的字符串，返回值为一个匿名函数</li>
+<li>将该匿名函数转化为C++类型</li>
+<li>执行该函数</li>
+<li>加载 <code>Module</code> 内建模块</li>
+<li>以命令行参数为文件名加载文件(即传来的app.js)</li>
+<li>判断文件扩展名，不同扩展名加载方式不同。这里是js</li>
+<li>读取文件</li>
+<li>包装文件（加上 <code>require</code>、<code>exports</code> 、<code>module</code> 等参数）</li>
+<li>运行</li>
+<li>结束</li>
+</ol>
+
+<h1 id="精选面试题">精选面试题</h1>
+
+<p><a href="https://ruby-china.org/topics/28207">Node.js 启动方式：一道关于全局变量的题目引发的思考</a></p>
+    </div>
+
+    
+    
+<div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">herozhou工巧</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">2017-10-03</span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+
+    
+    
+
+    <footer class="post-footer">
+      <div class="post-tags">
+          
+          <a href="/tags/node.js/">Node.js</a>
+          
+        </div>
+
+      
+      <nav class="post-nav">
+        
+          <a class="prev" href="/post/node-builtin/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">Node builtin模块加载源码分析</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+  <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'blog-herozhou';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+  
+
+  
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:herozhou97@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+  <a href="http://blog.herozhou.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    
+      2017 - 
+    2018
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">herozhou工巧</span>
+  </span>
+</div>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+<script src="/lib/highlight/highlight.pack.js?v=20171001"></script>
+<script type="text/javascript" src="/lib/jquery/jquery-3.2.1.min.js"></script>
+  <script type="text/javascript" src="/lib/slideout/slideout-1.0.1.min.js"></script>
+  <script type="text/javascript" src="/lib/fancybox/jquery.fancybox-3.1.20.min.js"></script>
+<script type="text/javascript" src="/dist/even.min.js?v=2.7.0"></script>
+
+
+<script>
+window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+ga('create', 'UA-111510751-1', 'auto');
+ga('send', 'pageview');
+</script>
+<script async src='//www.google-analytics.com/analytics.js'></script>
+
+
+
+</body>
+</html>
