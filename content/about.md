@@ -10,15 +10,13 @@ comment: false
 mathjax: false
 ---
 
-Hugo is a static site engine written in Go.
+大三学习前端ing，热爱代码喜欢折腾新技术。
 
+日常思考遇到的问题及寻求更好的解决方案，喜欢思考如何使用所学的知识开发在某个领域创新的工具，这也是我很多项目的初衷。
 
-It makes use of a variety of open source projects including:
+喜欢参加 Hackathon ，和团队一起进行头脑风暴去挑战未遇到过的困难，一夜未眠的攻坚克难换来的是第二天的成就感，并因此认识了很多优秀的小伙伴。
 
-* [Cobra](https://github.com/spf13/cobra)
-* [Viper](https://github.com/spf13/viper)
-* [J Walter Weatherman](https://github.com/spf13/jWalterWeatherman)
-* [Cast](https://github.com/spf13/cast)
+喜欢尝试新技术，对于设计思想很棒的工具会深入探究其实现原理及思想。
 
-Learn more and contribute on [GitHub](https://github.com/gohugoio).
+[GitHub](https://github.com/herozhou).
 

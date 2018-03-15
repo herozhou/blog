@@ -1,1158 +1,741 @@
 ---
-title: "English Creating a New Theme"
-date: 2017-08-31T15:43:48+08:00
-lastmod: 2017-08-31T15:43:48+08:00
+title: "自底向上 —— 事件循环的原理"
+date: 2017-10-13T15:43:48+08:00
+lastmod: 2017-10-13T15:43:48+08:00
 draft: false
-tags: ["preview", "English", "tag-2"]
-categories: ["English"]
-author: "Michael Henderson"
-
-# You can also close(false) or open(true) something for this content.
-# P.S. comment can only be closed
-# comment: false
-# toc: false
-autoCollapseToc: true
-# You can also define another contentCopyright. e.g. contentCopyright: "This is another copyright."
-contentCopyright: '<a href="https://github.com/gohugoio/hugoBasicExample" rel="noopener" target="_blank">See origin</a>'
-# reward: false
-# mathjax: false
+tags: ["Node.js","Node.js事件循环"]
+categories: ["Node.js源码分析"]
+author: "herozhou工巧"
 ---
 
-## Introduction
-
-This tutorial will show you how to create a simple theme in Hugo. I assume that you are familiar with HTML, the bash command line, and that you are comfortable using Markdown to format content. I'll explain how Hugo uses templates and how you can organize your templates to create a theme. I won't cover using CSS to style your theme.
+这篇文章主要讲了 Node 中 事件循环的原理，以自底向上的角度解析。
 
 <!--more-->
 
-We'll start with creating a new site with a very basic template. Then we'll add in a few pages and posts. With small variations on that, you will be able to create many different types of web sites.
-
-In this tutorial, commands that you enter will start with the "$" prompt. The output will follow. Lines that start with "#" are comments that I've added to explain a point. When I show updates to a file, the ":wq" on the last line means to save the file.
-
-Here's an example:
-
-```
-## this is a comment
-$ echo this is a command
-this is a command
-
-## edit the file
-$vi foo.md
-+++
-date = "2014-09-28"
-title = "creating a new theme"
-+++
-
-bah and humbug
-:wq
-
-## show it
-$ cat foo.md
-+++
-date = "2014-09-28"
-title = "creating a new theme"
-+++
-
-bah and humbug
-$
-```
-
-
-## Some Definitions
-
-There are a few concepts that you need to understand before creating a theme.
-
-### Skins
-
-Skins are the files responsible for the look and feel of your site. It’s the CSS that controls colors and fonts, it’s the Javascript that determines actions and reactions. It’s also the rules that Hugo uses to transform your content into the HTML that the site will serve to visitors.
-
-You have two ways to create a skin. The simplest way is to create it in the ```layouts/``` directory. If you do, then you don’t have to worry about configuring Hugo to recognize it. The first place that Hugo will look for rules and files is in the ```layouts/``` directory so it will always find the skin.
-
-Your second choice is to create it in a sub-directory of the ```themes/``` directory. If you do, then you must always tell Hugo where to search for the skin. It’s extra work, though, so why bother with it?
-
-The difference between creating a skin in ```layouts/``` and creating it in ```themes/``` is very subtle. A skin in ```layouts/``` can’t be customized without updating the templates and static files that it is built from. A skin created in ```themes/```, on the other hand, can be and that makes it easier for other people to use it.
-
-The rest of this tutorial will call a skin created in the ```themes/``` directory a theme.
-
-Note that you can use this tutorial to create a skin in the ```layouts/``` directory if you wish to. The main difference will be that you won’t need to update the site’s configuration file to use a theme.
-
-### The Home Page
-
-The home page, or landing page, is the first page that many visitors to a site see. It is the index.html file in the root directory of the web site. Since Hugo writes files to the public/ directory, our home page is public/index.html.
-
-### Site Configuration File
-
-When Hugo runs, it looks for a configuration file that contains settings that override default values for the entire site. The file can use TOML, YAML, or JSON. I prefer to use TOML for my configuration files. If you prefer to use JSON or YAML, you’ll need to translate my examples. You’ll also need to change the name of the file since Hugo uses the extension to determine how to process it.
-
-Hugo translates Markdown files into HTML. By default, Hugo expects to find Markdown files in your ```content/``` directory and template files in your ```themes/``` directory. It will create HTML files in your ```public/``` directory. You can change this by specifying alternate locations in the configuration file.
-
-### Content
-
-Content is stored in text files that contain two sections. The first section is the “front matter,” which is the meta-information on the content. The second section contains Markdown that will be converted to HTML.
-
-#### Front Matter
-
-The front matter is information about the content. Like the configuration file, it can be written in TOML, YAML, or JSON. Unlike the configuration file, Hugo doesn’t use the file’s extension to know the format. It looks for markers to signal the type. TOML is surrounded by “`+++`”, YAML by “`---`”, and JSON is enclosed in curly braces. I prefer to use TOML, so you’ll need to translate my examples if you prefer YAML or JSON.
-
-The information in the front matter is passed into the template before the content is rendered into HTML.
-
-#### Markdown
-
-Content is written in Markdown which makes it easier to create the content. Hugo runs the content through a Markdown engine to create the HTML which will be written to the output file.
-
-### Template Files
-
-Hugo uses template files to render content into HTML. Template files are a bridge between the content and presentation. Rules in the template define what content is published, where it's published to, and how it will rendered to the HTML file. The template guides the presentation by specifying the style to use.
-
-There are three types of templates: single, list, and partial. Each type takes a bit of content as input and transforms it based on the commands in the template.
-
-Hugo uses its knowledge of the content to find the template file used to render the content. If it can’t find a template that is an exact match for the content, it will shift up a level and search from there. It will continue to do so until it finds a matching template or runs out of templates to try. If it can’t find a template, it will use the default template for the site.
-
-Please note that you can use the front matter to influence Hugo’s choice of templates.
-
-#### Single Template
-
-A single template is used to render a single piece of content. For example, an article or post would be a single piece of content and use a single template.
-
-#### List Template
-
-A list template renders a group of related content. That could be a summary of recent postings or all articles in a category. List templates can contain multiple groups.
-
-The homepage template is a special type of list template. Hugo assumes that the home page of your site will act as the portal for the rest of the content in the site.
-
-#### Partial Template
-
-A partial template is a template that can be included in other templates. Partial templates must be called using the “partial” template command. They are very handy for rolling up common behavior. For example, your site may have a banner that all pages use. Instead of copying the text of the banner into every single and list template, you could create a partial with the banner in it. That way if you decide to change the banner, you only have to change the partial template.
-
-## Create a New Site
-
-Let's use Hugo to create a new web site. I'm a Mac user, so I'll create mine in my home directory, in the Sites folder. If you're using Linux, you might have to create the folder first.
-
-The "new site" command will create a skeleton of a site. It will give you the basic directory structure and a useable configuration file.
-
-```
-$ hugo new site ~/Sites/zafta
-$ cd ~/Sites/zafta
-$ ls -l
-total 8
-drwxr-xr-x  7 quoha  staff  238 Sep 29 16:49 .
-drwxr-xr-x  3 quoha  staff  102 Sep 29 16:49 ..
-drwxr-xr-x  2 quoha  staff   68 Sep 29 16:49 archetypes
--rw-r--r--  1 quoha  staff   82 Sep 29 16:49 config.toml
-drwxr-xr-x  2 quoha  staff   68 Sep 29 16:49 content
-drwxr-xr-x  2 quoha  staff   68 Sep 29 16:49 layouts
-drwxr-xr-x  2 quoha  staff   68 Sep 29 16:49 static
-$
-```
-
-Take a look in the content/ directory to confirm that it is empty.
-
-The other directories (archetypes/, layouts/, and static/) are used when customizing a theme. That's a topic for a different tutorial, so please ignore them for now.
-
-### Generate the HTML For the New Site
-
-Running the `hugo` command with no options will read all the available content and generate the HTML files. It will also copy all static files (that's everything that's not content). Since we have an empty site, it won't do much, but it will do it very quickly.
-
-```
-$ hugo --verbose
-INFO: 2014/09/29 Using config file: config.toml
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/static/ to /Users/quoha/Sites/zafta/public/
-WARN: 2014/09/29 Unable to locate layout: [index.html _default/list.html _default/single.html]
-WARN: 2014/09/29 Unable to locate layout: [404.html]
-0 draft content 
-0 future content 
-0 pages created 
-0 tags created
-0 categories created
-in 2 ms
-$ 
-```
-
-The "`--verbose`" flag gives extra information that will be helpful when we build the template. Every line of the output that starts with "INFO:" or "WARN:" is present because we used that flag. The lines that start with "WARN:" are warning messages. We'll go over them later.
-
-We can verify that the command worked by looking at the directory again.
-
-```
-$ ls -l
-total 8
-drwxr-xr-x  2 quoha  staff   68 Sep 29 16:49 archetypes
--rw-r--r--  1 quoha  staff   82 Sep 29 16:49 config.toml
-drwxr-xr-x  2 quoha  staff   68 Sep 29 16:49 content
-drwxr-xr-x  2 quoha  staff   68 Sep 29 16:49 layouts
-drwxr-xr-x  4 quoha  staff  136 Sep 29 17:02 public
-drwxr-xr-x  2 quoha  staff   68 Sep 29 16:49 static
-$
-```
-
-See that new public/ directory? Hugo placed all generated content there. When you're ready to publish your web site, that's the place to start. For now, though, let's just confirm that we have what we'd expect from a site with no content.
-
-```
-$ ls -l public
-total 16
--rw-r--r--  1 quoha  staff  416 Sep 29 17:02 index.xml
--rw-r--r--  1 quoha  staff  262 Sep 29 17:02 sitemap.xml
-$ 
-```
-
-Hugo created two XML files, which is standard, but there are no HTML files.
-
-
-
-### Test the New Site
-
-Verify that you can run the built-in web server. It will dramatically shorten your development cycle if you do. Start it by running the "server" command. If it is successful, you will see output similar to the following:
-
-```
-$ hugo server --verbose
-INFO: 2014/09/29 Using config file: /Users/quoha/Sites/zafta/config.toml
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/static/ to /Users/quoha/Sites/zafta/public/
-WARN: 2014/09/29 Unable to locate layout: [index.html _default/list.html _default/single.html]
-WARN: 2014/09/29 Unable to locate layout: [404.html]
-0 draft content 
-0 future content 
-0 pages created 
-0 tags created
-0 categories created
-in 2 ms
-Serving pages from /Users/quoha/Sites/zafta/public
-Web Server is available at http://localhost:1313
-Press Ctrl+C to stop
-```
-
-Connect to the listed URL (it's on the line that starts with "Web Server"). If everything is working correctly, you should get a page that shows the following:
-
-```
-index.xml
-sitemap.xml
-```
-
-That's a listing of your public/ directory. Hugo didn't create a home page because our site has no content. When there's no index.html file in a directory, the server lists the files in the directory, which is what you should see in your browser.
-
-Let’s go back and look at those warnings again.
-
-```
-WARN: 2014/09/29 Unable to locate layout: [index.html _default/list.html _default/single.html]
-WARN: 2014/09/29 Unable to locate layout: [404.html]
-```
-
-That second warning is easier to explain. We haven’t created a template to be used to generate “page not found errors.” The 404 message is a topic for a separate tutorial.
-
-Now for the first warning. It is for the home page. You can tell because the first layout that it looked for was “index.html.” That’s only used by the home page.
-
-I like that the verbose flag causes Hugo to list the files that it's searching for. For the home page, they are index.html, _default/list.html, and _default/single.html. There are some rules that we'll cover later that explain the names and paths. For now, just remember that Hugo couldn't find a template for the home page and it told you so.
-
-At this point, you've got a working installation and site that we can build upon. All that’s left is to add some content and a theme to display it.
-
-## Create a New Theme
-
-Hugo doesn't ship with a default theme. There are a few available (I counted a dozen when I first installed Hugo) and Hugo comes with a command to create new themes.
-
-We're going to create a new theme called "zafta." Since the goal of this tutorial is to show you how to fill out the files to pull in your content, the theme will not contain any CSS. In other words, ugly but functional.
-
-All themes have opinions on content and layout. For example, Zafta uses "post" over "blog". Strong opinions make for simpler templates but differing opinions make it tougher to use themes. When you build a theme, consider using the terms that other themes do.
-
-
-### Create a Skeleton
-
-Use the hugo "new" command to create the skeleton of a theme. This creates the directory structure and places empty files for you to fill out.
-
-```
-$ hugo new theme zafta
-
-$ ls -l
-total 8
-drwxr-xr-x  2 quoha  staff   68 Sep 29 16:49 archetypes
--rw-r--r--  1 quoha  staff   82 Sep 29 16:49 config.toml
-drwxr-xr-x  2 quoha  staff   68 Sep 29 16:49 content
-drwxr-xr-x  2 quoha  staff   68 Sep 29 16:49 layouts
-drwxr-xr-x  4 quoha  staff  136 Sep 29 17:02 public
-drwxr-xr-x  2 quoha  staff   68 Sep 29 16:49 static
-drwxr-xr-x  3 quoha  staff  102 Sep 29 17:31 themes
-
-$ find themes -type f | xargs ls -l
--rw-r--r--  1 quoha  staff  1081 Sep 29 17:31 themes/zafta/LICENSE.md
--rw-r--r--  1 quoha  staff     0 Sep 29 17:31 themes/zafta/archetypes/default.md
--rw-r--r--  1 quoha  staff     0 Sep 29 17:31 themes/zafta/layouts/_default/list.html
--rw-r--r--  1 quoha  staff     0 Sep 29 17:31 themes/zafta/layouts/_default/single.html
--rw-r--r--  1 quoha  staff     0 Sep 29 17:31 themes/zafta/layouts/index.html
--rw-r--r--  1 quoha  staff     0 Sep 29 17:31 themes/zafta/layouts/partials/footer.html
--rw-r--r--  1 quoha  staff     0 Sep 29 17:31 themes/zafta/layouts/partials/header.html
--rw-r--r--  1 quoha  staff    93 Sep 29 17:31 themes/zafta/theme.toml
-$ 
-```
-
-The skeleton includes templates (the files ending in .html), license file, a description of your theme (the theme.toml file), and an empty archetype.
-
-Please take a minute to fill out the theme.toml and LICENSE.md files. They're optional, but if you're going to be distributing your theme, it tells the world who to praise (or blame). It's also nice to declare the license so that people will know how they can use the theme.
-
-```
-$ vi themes/zafta/theme.toml
-author = "michael d henderson"
-description = "a minimal working template"
-license = "MIT"
-name = "zafta"
-source_repo = ""
-tags = ["tags", "categories"]
-:wq
-
-## also edit themes/zafta/LICENSE.md and change
-## the bit that says "YOUR_NAME_HERE"
-```
-
-Note that the the skeleton's template files are empty. Don't worry, we'll be changing that shortly.
-
-```
-$ find themes/zafta -name '*.html' | xargs ls -l
--rw-r--r--  1 quoha  staff  0 Sep 29 17:31 themes/zafta/layouts/_default/list.html
--rw-r--r--  1 quoha  staff  0 Sep 29 17:31 themes/zafta/layouts/_default/single.html
--rw-r--r--  1 quoha  staff  0 Sep 29 17:31 themes/zafta/layouts/index.html
--rw-r--r--  1 quoha  staff  0 Sep 29 17:31 themes/zafta/layouts/partials/footer.html
--rw-r--r--  1 quoha  staff  0 Sep 29 17:31 themes/zafta/layouts/partials/header.html
-$
-```
-
-
-
-### Update the Configuration File to Use the Theme
-
-Now that we've got a theme to work with, it's a good idea to add the theme name to the configuration file. This is optional, because you can always add "-t zafta" on all your commands. I like to put it the configuration file because I like shorter command lines. If you don't put it in the configuration file or specify it on the command line, you won't use the template that you're expecting to.
-
-Edit the file to add the theme, add a title for the site, and specify that all of our content will use the TOML format.
-
-```
-$ vi config.toml
-theme = "zafta"
-baseurl = ""
-languageCode = "en-us"
-title = "zafta - totally refreshing"
-MetaDataFormat = "toml"
-:wq
-
-$
-```
-
-### Generate the Site
-
-Now that we have an empty theme, let's generate the site again.
-
-```
-$ hugo --verbose
-INFO: 2014/09/29 Using config file: /Users/quoha/Sites/zafta/config.toml
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/themes/zafta/static/ to /Users/quoha/Sites/zafta/public/
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/static/ to /Users/quoha/Sites/zafta/public/
-WARN: 2014/09/29 Unable to locate layout: [404.html theme/404.html]
-0 draft content 
-0 future content 
-0 pages created 
-0 tags created
-0 categories created
-in 2 ms
-$
-```
-
-Did you notice that the output is different? The warning message for the home page has disappeared and we have an additional information line saying that Hugo is syncing from the theme's directory.
-
-Let's check the public/ directory to see what Hugo's created.
-
-```
-$ ls -l public
-total 16
-drwxr-xr-x  2 quoha  staff   68 Sep 29 17:56 css
--rw-r--r--  1 quoha  staff    0 Sep 29 17:56 index.html
--rw-r--r--  1 quoha  staff  407 Sep 29 17:56 index.xml
-drwxr-xr-x  2 quoha  staff   68 Sep 29 17:56 js
--rw-r--r--  1 quoha  staff  243 Sep 29 17:56 sitemap.xml
-$
-```
-
-Notice four things:
-
-1. Hugo created a home page. This is the file public/index.html.
-2. Hugo created a css/ directory.
-3. Hugo created a js/ directory.
-4. Hugo claimed that it created 0 pages. It created a file and copied over static files, but didn't create any pages. That's because it considers a "page" to be a file created directly from a content file. It doesn't count things like the index.html files that it creates automatically.
-
-#### The Home Page
-
-Hugo supports many different types of templates. The home page is special because it gets its own type of template and its own template file. The file, layouts/index.html, is used to generate the HTML for the home page. The Hugo documentation says that this is the only required template, but that depends. Hugo's warning message shows that it looks for three different templates:
-
-```
-WARN: 2014/09/29 Unable to locate layout: [index.html _default/list.html _default/single.html]
-```
-
-If it can't find any of these, it completely skips creating the home page. We noticed that when we built the site without having a theme installed.
-
-When Hugo created our theme, it created an empty home page template. Now, when we build the site, Hugo finds the template and uses it to generate the HTML for the home page. Since the template file is empty, the HTML file is empty, too. If the template had any rules in it, then Hugo would have used them to generate the home page.
-
-```
-$ find . -name index.html | xargs ls -l
--rw-r--r--  1 quoha  staff  0 Sep 29 20:21 ./public/index.html
--rw-r--r--  1 quoha  staff  0 Sep 29 17:31 ./themes/zafta/layouts/index.html
-$ 
-```
-
-#### The Magic of Static
-
-Hugo does two things when generating the site. It uses templates to transform content into HTML and it copies static files into the site. Unlike content, static files are not transformed. They are copied exactly as they are.
-
-Hugo assumes that your site will use both CSS and JavaScript, so it creates directories in your theme to hold them. Remember opinions? Well, Hugo's opinion is that you'll store your CSS in a directory named css/ and your JavaScript in a directory named js/. If you don't like that, you can change the directory names in your theme directory or even delete them completely. Hugo's nice enough to offer its opinion, then behave nicely if you disagree.
-
-```
-$ find themes/zafta -type d | xargs ls -ld
-drwxr-xr-x  7 quoha  staff  238 Sep 29 17:38 themes/zafta
-drwxr-xr-x  3 quoha  staff  102 Sep 29 17:31 themes/zafta/archetypes
-drwxr-xr-x  5 quoha  staff  170 Sep 29 17:31 themes/zafta/layouts
-drwxr-xr-x  4 quoha  staff  136 Sep 29 17:31 themes/zafta/layouts/_default
-drwxr-xr-x  4 quoha  staff  136 Sep 29 17:31 themes/zafta/layouts/partials
-drwxr-xr-x  4 quoha  staff  136 Sep 29 17:31 themes/zafta/static
-drwxr-xr-x  2 quoha  staff   68 Sep 29 17:31 themes/zafta/static/css
-drwxr-xr-x  2 quoha  staff   68 Sep 29 17:31 themes/zafta/static/js
-$ 
-```
-
-## The Theme Development Cycle
-
-When you're working on a theme, you will make changes in the theme's directory, rebuild the site, and check your changes in the browser. Hugo makes this very easy:
-
-1. Purge the public/ directory.
-2. Run the built in web server in watch mode.
-3. Open your site in a browser.
-4. Update the theme.
-5. Glance at your browser window to see changes.
-6. Return to step 4.
-
-I’ll throw in one more opinion: never work on a theme on a live site. Always work on a copy of your site. Make changes to your theme, test them, then copy them up to your site. For added safety, use a tool like Git to keep a revision history of your content and your theme. Believe me when I say that it is too easy to lose both your mind and your changes.
-
-Check the main Hugo site for information on using Git with Hugo.
-
-### Purge the public/ Directory
-
-When generating the site, Hugo will create new files and update existing ones in the ```public/``` directory. It will not delete files that are no longer used. For example, files that were created in the wrong directory or with the wrong title will remain. If you leave them, you might get confused by them later. I recommend cleaning out your site prior to generating it.
-
-Note: If you're building on an SSD, you should ignore this. Churning on a SSD can be costly.
-
-### Hugo's Watch Option
-
-Hugo's "`--watch`" option will monitor the content/ and your theme directories for changes and rebuild the site automatically.
-
-### Live Reload
-
-Hugo's built in web server supports live reload. As pages are saved on the server, the browser is told to refresh the page. Usually, this happens faster than you can say, "Wow, that's totally amazing."
-
-### Development Commands
-
-Use the following commands as the basis for your workflow.
-
-```
-## purge old files. hugo will recreate the public directory.
-##
-$ rm -rf public
-##
-## run hugo in watch mode
-##
-$ hugo server --watch --verbose
-```
-
-Here's sample output showing Hugo detecting a change to the template for the home page. Once generated, the web browser automatically reloaded the page. I've said this before, it's amazing.
-
-
-```
-$ rm -rf public
-$ hugo server --watch --verbose
-INFO: 2014/09/29 Using config file: /Users/quoha/Sites/zafta/config.toml
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/themes/zafta/static/ to /Users/quoha/Sites/zafta/public/
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/static/ to /Users/quoha/Sites/zafta/public/
-WARN: 2014/09/29 Unable to locate layout: [404.html theme/404.html]
-0 draft content 
-0 future content 
-0 pages created 
-0 tags created
-0 categories created
-in 2 ms
-Watching for changes in /Users/quoha/Sites/zafta/content
-Serving pages from /Users/quoha/Sites/zafta/public
-Web Server is available at http://localhost:1313
-Press Ctrl+C to stop
-INFO: 2014/09/29 File System Event: ["/Users/quoha/Sites/zafta/themes/zafta/layouts/index.html": MODIFY|ATTRIB]
-Change detected, rebuilding site
-
-WARN: 2014/09/29 Unable to locate layout: [404.html theme/404.html]
-0 draft content 
-0 future content 
-0 pages created 
-0 tags created
-0 categories created
-in 1 ms
-```
-
-## Update the Home Page Template
-
-The home page is one of a few special pages that Hugo creates automatically. As mentioned earlier, it looks for one of three files in the theme's layout/ directory:
-
-1. index.html
-2. _default/list.html
-3. _default/single.html
-
-We could update one of the default templates, but a good design decision is to update the most specific template available. That's not a hard and fast rule (in fact, we'll break it a few times in this tutorial), but it is a good generalization.
-
-### Make a Static Home Page
-
-Right now, that page is empty because we don't have any content and we don't have any logic in the template. Let's change that by adding some text to the template.
-
-```
-$ vi themes/zafta/layouts/index.html
-<!DOCTYPE html> 
-<html> 
-<body> 
-  <p>hugo says hello!</p> 
-</body> 
-</html> 
-:wq
-
-$
-```
-
-Build the web site and then verify the results.
-
-```
-$ hugo --verbose
-INFO: 2014/09/29 Using config file: /Users/quoha/Sites/zafta/config.toml
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/themes/zafta/static/ to /Users/quoha/Sites/zafta/public/
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/static/ to /Users/quoha/Sites/zafta/public/
-WARN: 2014/09/29 Unable to locate layout: [404.html theme/404.html]
-0 draft content 
-0 future content 
-0 pages created 
-0 tags created
-0 categories created
-in 2 ms
-
-$ find public -type f -name '*.html' | xargs ls -l
--rw-r--r--  1 quoha  staff  78 Sep 29 21:26 public/index.html
-
-$ cat public/index.html 
-<!DOCTYPE html> 
-<html> 
-<body> 
-  <p>hugo says hello!</p> 
-</html>
-```
-
-#### Live Reload
-
-Note: If you're running the server with the `--watch` option, you'll see different content in the file:
-
-```
-$ cat public/index.html 
-<!DOCTYPE html> 
-<html> 
-<body> 
-  <p>hugo says hello!</p> 
-<script>document.write('<script src="http://' 
-        + (location.host || 'localhost').split(':')[0] 
-    + ':1313/livereload.js?mindelay=10"></' 
-        + 'script>')</script></body> 
-</html>
-```
-
-When you use `--watch`, the Live Reload script is added by Hugo. Look for live reload in the documentation to see what it does and how to disable it.
-
-### Build a "Dynamic" Home Page
-
-"Dynamic home page?" Hugo's a static web site generator, so this seems an odd thing to say. I mean let's have the home page automatically reflect the content in the site every time Hugo builds it. We'll use iteration in the template to do that.
-
-#### Create New Posts
-
-Now that we have the home page generating static content, let's add some content to the site. We'll display these posts as a list on the home page and on their own page, too.
-
-Hugo has a command to generate a skeleton post, just like it does for sites and themes.
-
-```
-$ hugo --verbose new post/first.md
-INFO: 2014/09/29 Using config file: /Users/quoha/Sites/zafta/config.toml
-INFO: 2014/09/29 attempting to create  post/first.md of post
-INFO: 2014/09/29 curpath: /Users/quoha/Sites/zafta/themes/zafta/archetypes/default.md
-ERROR: 2014/09/29 Unable to Cast <nil> to map[string]interface{}
-
-$ 
-```
-
-That wasn't very nice, was it?
-
-The "new" command uses an archetype to create the post file. Hugo created an empty default archetype file, but that causes an error when there's a theme. For me, the workaround was to create an archetypes file specifically for the post type.
-
-```
-$ vi themes/zafta/archetypes/post.md
-+++
-Description = ""
-Tags = []
-Categories = []
-+++
-:wq
-
-$ find themes/zafta/archetypes -type f | xargs ls -l
--rw-r--r--  1 quoha  staff   0 Sep 29 21:53 themes/zafta/archetypes/default.md
--rw-r--r--  1 quoha  staff  51 Sep 29 21:54 themes/zafta/archetypes/post.md
-
-$ hugo --verbose new post/first.md
-INFO: 2014/09/29 Using config file: /Users/quoha/Sites/zafta/config.toml
-INFO: 2014/09/29 attempting to create  post/first.md of post
-INFO: 2014/09/29 curpath: /Users/quoha/Sites/zafta/themes/zafta/archetypes/post.md
-INFO: 2014/09/29 creating /Users/quoha/Sites/zafta/content/post/first.md
-/Users/quoha/Sites/zafta/content/post/first.md created
-
-$ hugo --verbose new post/second.md
-INFO: 2014/09/29 Using config file: /Users/quoha/Sites/zafta/config.toml
-INFO: 2014/09/29 attempting to create  post/second.md of post
-INFO: 2014/09/29 curpath: /Users/quoha/Sites/zafta/themes/zafta/archetypes/post.md
-INFO: 2014/09/29 creating /Users/quoha/Sites/zafta/content/post/second.md
-/Users/quoha/Sites/zafta/content/post/second.md created
-
-$ ls -l content/post
-total 16
--rw-r--r--  1 quoha  staff  104 Sep 29 21:54 first.md
--rw-r--r--  1 quoha  staff  105 Sep 29 21:57 second.md
-
-$ cat content/post/first.md 
-+++
-Categories = []
-Description = ""
-Tags = []
-date = "2014-09-29T21:54:53-05:00"
-title = "first"
-
-+++
-my first post
-
-$ cat content/post/second.md 
-+++
-Categories = []
-Description = ""
-Tags = []
-date = "2014-09-29T21:57:09-05:00"
-title = "second"
-
-+++
-my second post
-
-$ 
-```
-
-Build the web site and then verify the results.
-
-```
-$ rm -rf public
-$ hugo --verbose
-INFO: 2014/09/29 Using config file: /Users/quoha/Sites/zafta/config.toml
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/themes/zafta/static/ to /Users/quoha/Sites/zafta/public/
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/static/ to /Users/quoha/Sites/zafta/public/
-INFO: 2014/09/29 found taxonomies: map[string]string{"category":"categories", "tag":"tags"}
-WARN: 2014/09/29 Unable to locate layout: [404.html theme/404.html]
-0 draft content 
-0 future content 
-2 pages created 
-0 tags created
-0 categories created
-in 4 ms
-$
-```
-
-The output says that it created 2 pages. Those are our new posts:
-
-```
-$ find public -type f -name '*.html' | xargs ls -l
--rw-r--r--  1 quoha  staff  78 Sep 29 22:13 public/index.html
--rw-r--r--  1 quoha  staff   0 Sep 29 22:13 public/post/first/index.html
--rw-r--r--  1 quoha  staff   0 Sep 29 22:13 public/post/index.html
--rw-r--r--  1 quoha  staff   0 Sep 29 22:13 public/post/second/index.html
-$
-```
-
-The new files are empty because because the templates used to generate the content are empty. The homepage doesn't show the new content, either. We have to update the templates to add the posts.
-
-### List and Single Templates
-
-In Hugo, we have three major kinds of templates. There's the home page template that we updated previously. It is used only by the home page. We also have "single" templates which are used to generate output for a single content file. We also have "list" templates that are used to group multiple pieces of content before generating output.
-
-Generally speaking, list templates are named "list.html" and single templates are named "single.html."
-
-There are three other types of templates: partials, content views, and terms. We will not go into much detail on these.
-
-### Add Content to the Homepage
-
-The home page will contain a list of posts. Let's update its template to add the posts that we just created. The logic in the template will run every time we build the site.
-
-```
-$ vi themes/zafta/layouts/index.html 
-<!DOCTYPE html>
-<html>
-<body>
-  {{ range first 10 .Data.Pages }}
-    <h1>{{ .Title }}</h1>
-  {{ end }}
-</body>
-</html>
-:wq
-
-$
-```
-
-Hugo uses the Go template engine. That engine scans the template files for commands which are enclosed between "{{" and "}}". In our template, the commands are:
-
-1. range
-2. .Title
-3. end
-
-The "range" command is an iterator. We're going to use it to go through the first ten pages. Every HTML file that Hugo creates is treated as a page, so looping through the list of pages will look at every file that will be created.
-
-The ".Title" command prints the value of the "title" variable. Hugo pulls it from the front matter in the Markdown file.
-
-The "end" command signals the end of the range iterator. The engine loops back to the top of the iteration when it finds "end." Everything between the "range" and "end" is evaluated every time the engine goes through the iteration. In this file, that would cause the title from the first ten pages to be output as heading level one.
-
-It's helpful to remember that some variables, like .Data, are created before any output files. Hugo loads every content file into the variable and then gives the template a chance to process before creating the HTML files.
-
-Build the web site and then verify the results.
-
-```
-$ rm -rf public
-$ hugo --verbose
-INFO: 2014/09/29 Using config file: /Users/quoha/Sites/zafta/config.toml
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/themes/zafta/static/ to /Users/quoha/Sites/zafta/public/
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/static/ to /Users/quoha/Sites/zafta/public/
-INFO: 2014/09/29 found taxonomies: map[string]string{"tag":"tags", "category":"categories"}
-WARN: 2014/09/29 Unable to locate layout: [404.html theme/404.html]
-0 draft content 
-0 future content 
-2 pages created 
-0 tags created
-0 categories created
-in 4 ms
-$ find public -type f -name '*.html' | xargs ls -l 
--rw-r--r--  1 quoha  staff  94 Sep 29 22:23 public/index.html
--rw-r--r--  1 quoha  staff   0 Sep 29 22:23 public/post/first/index.html
--rw-r--r--  1 quoha  staff   0 Sep 29 22:23 public/post/index.html
--rw-r--r--  1 quoha  staff   0 Sep 29 22:23 public/post/second/index.html
-$ cat public/index.html 
-<!DOCTYPE html>
-<html>
-<body>
+# 自底向上 —— 事件循环的原理
+## 初始化循环队列 —— uv_default_loop
+还记得第一章我们的 ```Start``` 吗？
+```c
+// node-v8.9.0/src/node.cc 
+
+int Start(int argc, char** argv) {
+  PlatformInit();
   
-    <h1>second</h1>
+  ...
   
-    <h1>first</h1>
+  v8_platform.Initialize(v8_thread_pool_size, uv_default_loop());
+  V8::Initialize();
+  const int exit_code =
   
-</body>
-</html>
-$
+      //调用重载函数Start
+      Start(uv_default_loop(), argc, argv, exec_argc, exec_argv);
+  ...
+}
 ```
+ ```Start``` 调用了函数```uv_default_loop()```是```libuv```库中一个函数：
+```c
+// node-v8.9.0/deps/uv/src/unix/uv-common.c
 
-Congratulations, the home page shows the title of the two posts. The posts themselves are still empty, but let's take a moment to appreciate what we've done. Your template now generates output dynamically. Believe it or not, by inserting the range command inside of those curly braces, you've learned everything you need to know to build a theme. All that's really left is understanding which template will be used to generate each content file and becoming familiar with the commands for the template engine.
+uv_loop_t* uv_default_loop(void) {
+  if (default_loop_ptr != NULL)
+    return default_loop_ptr;
 
-And, if that were entirely true, this tutorial would be much shorter. There are a few things to know that will make creating a new template much easier. Don't worry, though, that's all to come.
+  if (uv_loop_init(&default_loop_struct))
+    return NULL;
 
-### Add Content to the Posts
-
-We're working with posts, which are in the content/post/ directory. That means that their section is "post" (and if we don't do something weird, their type is also "post").
-
-Hugo uses the section and type to find the template file for every piece of content. Hugo will first look for a template file that matches the section or type name. If it can't find one, then it will look in the _default/ directory. There are some twists that we'll cover when we get to categories and tags, but for now we can assume that Hugo will try post/single.html, then _default/single.html.
-
-Now that we know the search rule, let's see what we actually have available:
-
-```
-$ find themes/zafta -name single.html | xargs ls -l
--rw-r--r--  1 quoha  staff  132 Sep 29 17:31 themes/zafta/layouts/_default/single.html
-```
-
-We could create a new template, post/single.html, or change the default. Since we don't know of any other content types, let's start with updating the default.
-
-Remember, any content that we haven't created a template for will end up using this template. That can be good or bad. Bad because I know that we're going to be adding different types of content and we're going to end up undoing some of the changes we've made. It's good because we'll be able to see immediate results. It's also good to start here because we can start to build the basic layout for the site. As we add more content types, we'll refactor this file and move logic around. Hugo makes that fairly painless, so we'll accept the cost and proceed.
-
-Please see the Hugo documentation on template rendering for all the details on determining which template to use. And, as the docs mention, if you're building a single page application (SPA) web site, you can delete all of the other templates and work with just the default single page. That's a refreshing amount of joy right there.
-
-#### Update the Template File
+  default_loop_ptr = &default_loop_struct;
+  return default_loop_ptr;
+}
 
 ```
-$ vi themes/zafta/layouts/_default/single.html 
-<!DOCTYPE html>
-<html>
-<head>
-  <title>{{ .Title }}</title>
-</head>
-<body>
-  <h1>{{ .Title }}</h1>
-  {{ .Content }}
-</body>
-</html>
-:wq
-
-$
+它会初始化 ```uv``` 库本身以及其中的 ```default_loop_struct``` ，并返回一个指向它的指针 ```default_loop_ptr``` 。```default_loop_struct``` 结构体包含了默认的事件循环队列。
+这里先不继续往下讲。我们明确几个概念。
+.```uv_loop_init```初始化事件循环队列
+``` 
+ ...
+  loop->nfds = 0;
+  loop->watchers = NULL;
+  loop->nwatchers = 0;
+  QUEUE_INIT(&loop->watcher_queue);
+  ...
 ```
+做了一系列初始化将观察者队列插入队列中.
+* watcher_queue：I/O 观察者链表
+* watchers：是一个 ```uv__io_t``` 类型的二级指针。这里维护的是一个 I/O 观察者映射表(实际是以fd为下标索引的数组)。
+* nwatchers：```watchers``` 数组的长度，因为是堆分配的动态数组，所以需要维护数组的长度。
+* nfds：监听了多少个fd，不同于 ```nwatchers``` ，因为 ```watchers``` 里面很多元素是空的。
 
-Build the web site and verify the results.
-
+### 观察者结构 uv__io_t
 ```
-$ rm -rf public
-$ hugo --verbose
-INFO: 2014/09/29 Using config file: /Users/quoha/Sites/zafta/config.toml
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/themes/zafta/static/ to /Users/quoha/Sites/zafta/public/
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/static/ to /Users/quoha/Sites/zafta/public/
-INFO: 2014/09/29 found taxonomies: map[string]string{"tag":"tags", "category":"categories"}
-WARN: 2014/09/29 Unable to locate layout: [404.html theme/404.html]
-0 draft content 
-0 future content 
-2 pages created 
-0 tags created
-0 categories created
-in 4 ms
+typedef struct uv__io_s uv__io_t;
 
-$ find public -type f -name '*.html' | xargs ls -l
--rw-r--r--  1 quoha  staff   94 Sep 29 22:40 public/index.html
--rw-r--r--  1 quoha  staff  125 Sep 29 22:40 public/post/first/index.html
--rw-r--r--  1 quoha  staff    0 Sep 29 22:40 public/post/index.html
--rw-r--r--  1 quoha  staff  128 Sep 29 22:40 public/post/second/index.html
-
-$ cat public/post/first/index.html 
-<!DOCTYPE html>
-<html>
-<head>
-  <title>first</title>
-</head>
-<body>
-  <h1>first</h1>
-  <p>my first post</p>
-
-</body>
-</html>
-
-$ cat public/post/second/index.html 
-<!DOCTYPE html>
-<html>
-<head>
-  <title>second</title>
-</head>
-<body>
-  <h1>second</h1>
-  <p>my second post</p>
-
-</body>
-</html>
-$
+struct uv__io_s {
+  uv__io_cb cb;
+  void* pending_queue[2];
+  void* watcher_queue[2];
+  unsigned int pevents; /* Pending event mask i.e. mask at next tick. */
+  unsigned int events;  /* Current event mask. */
+  int fd;
+  UV_IO_PRIVATE_PLATFORM_FIELDS
+};
 ```
+* fd：文件描述符，操作系统对进程监听的网络端口、或者打开文件的一个标记
+* cb：回调函数，当相应的 I/O 观察者监听的事件被激活之后，被libuv事件循环调用的回调函数
+* pevents：等待的事件
+* events：交给libuv的事件循环进行监听的事件。
 
-Notice that the posts now have content. You can go to localhost:1313/post/first to verify.
+## 事件循环入口 —— Start
+接下来看第一个重载 ```Start``` 函数,它包装了一下传进来的时间循环队列指针 ```event_loop``` 并传进第二个重载 ```Start```函数，在第一章中漏了事件循环的代码，这里贴出来:
+```c
+// node-v8.9.0/src/node.cc 
 
-### Linking to Content
+inline int Start(uv_loop_t* event_loop,
+                 int argc, const char* const* argv,
+                 int exec_argc, const char* const* exec_argv) {
+        
+    IsolateData isolate_data(isolate, event_loop,allocator.zero_fill_field());
+    exit_code = Start(isolate, &isolate_data, argc, argv, exec_argc, exec_argv);
+}
 
-The posts are on the home page. Let's add a link from there to the post. Since this is the home page, we'll update its template.
 
+inline int Start(Isolate* isolate, IsolateData* isolate_data,
+                 int argc, const char* const* argv,
+                 int exec_argc, const char* const* exec_argv) {
+                 
+  HandleScope handle_scope(isolate);
+  Local<Context> context = Context::New(isolate);
+  Context::Scope context_scope(context);
+  Environment env(isolate_data, context);
+
+
+  env.set_trace_sync_io(trace_sync_io);
+
+  {
+    SealHandleScope seal(isolate);
+    bool more;
+    //性能分析开始
+    PERFORMANCE_MARK(&env, LOOP_START);
+    do {
+      uv_run(env.event_loop(), UV_RUN_DEFAULT);
+
+      v8_platform.DrainVMTasks();
+
+      more = uv_loop_alive(env.event_loop());
+      if (more)
+        continue;
+
+      EmitBeforeExit(&env);
+
+      // Emit `beforeExit` if the loop became alive either after emitting
+      // event, or after running some callbacks.
+      more = uv_loop_alive(env.event_loop());
+    } while (more == true);
+    //性能分析结束
+    PERFORMANCE_MARK(&env, LOOP_EXIT);
+  }
+
+  env.set_trace_sync_io(false);
+
+  const int exit_code = EmitExit(&env);
+  RunAtExit(&env);
+  uv_key_delete(&thread_local_env);
+
+  v8_platform.DrainVMTasks();
+  return exit_code;
+}
+
+}
 ```
-$ vi themes/zafta/layouts/index.html
-<!DOCTYPE html>
-<html>
-<body>
-  {{ range first 10 .Data.Pages }}
-    <h1><a href="{{ .Permalink }}">{{ .Title }}</a></h1>
-  {{ end }}
-</body>
-</html>
+核心是```uv_run(env.event_loop(), UV_RUN_DEFAULT);```函数，这里将当前运行环境中的事件循环队列和标志 ```UV_RUN_DEFAULT``` 传入了 ```uv_run``` 函数，这个标志指示事件循环将以默认的模式运行。
+首先介绍一下 [libuv文档](http://docs.libuv.org/en/v1.x/loop.html) 对其中几个重要函数的定义：
+* int uv_run(uv_loop_t* loop, uv_run_mode mode)  
+  这个函数会以几个不同的模式运行事件循环
+
+* * UV_RUN_DEFAULT: Runs the event loop until there are no more  
+  运行事件循环，直到没有更多的活动和引用的句柄或请求。 如果uv_stop（）被调用并且仍然有活动的句柄或请求，则返回非零值。 在其他情况下返回零。
+* * UV_RUN_ONCE: Poll for i/o once. Note that this function blocks  
+   以Poll方式运行I/O一次。请注意，如果没有待处理的回调，该功能将阻塞。 完成后返回零（没有活动的句柄或请求），如果需要更多的回调，则返回非零（意味着您应该在将来再次运行事件循环）
+* * UV_RUN_NOWAIT: 
+  对 I/O 进行轮询，但是如果没有待处理的回调，则不会阻塞。 如果完成（没有活动的句柄或请求），返回零，或者如果需要更多回调，则返回非零（意味着您应该在将来再次运行事件循环）。
+* int uv_loop_alive(const uv_loop_t* loop)  
+  如果循环中还有活动句柄或请求，则返回非零值
+
+* void uv_stop(uv_loop_t* loop)  
+  停止事件循环，使uv_run（）尽快结束。 这将不会比下一个循环迭代发生。 如果在阻塞I/O之前调用此函数，则在此迭代中循环将不会阻塞I/O。
+* void uv_update_time(uv_loop_t* loop)  
+  更新事件循环的“现在”的概念。 Libuv在事件循环开始时缓存当前时间，以减少与时间相关的系统调用次数。通常不需要调用此函数，除非您有更长时间的阻塞事件循环的回调，其中“更长”有点主观，但可能在一毫秒或更多的数量级。 
+
+## 执行事件循环 —— uv_run
+在 uv_run 函数中，会维护一系列的监视器：
 ```
-
-Build the web site and verify the results.
-
-```
-$ rm -rf public
-$ hugo --verbose
-INFO: 2014/09/29 Using config file: /Users/quoha/Sites/zafta/config.toml
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/themes/zafta/static/ to /Users/quoha/Sites/zafta/public/
-INFO: 2014/09/29 syncing from /Users/quoha/Sites/zafta/static/ to /Users/quoha/Sites/zafta/public/
-INFO: 2014/09/29 found taxonomies: map[string]string{"tag":"tags", "category":"categories"}
-WARN: 2014/09/29 Unable to locate layout: [404.html theme/404.html]
-0 draft content 
-0 future content 
-2 pages created 
-0 tags created
-0 categories created
-in 4 ms
-
-$ find public -type f -name '*.html' | xargs ls -l
--rw-r--r--  1 quoha  staff  149 Sep 29 22:44 public/index.html
--rw-r--r--  1 quoha  staff  125 Sep 29 22:44 public/post/first/index.html
--rw-r--r--  1 quoha  staff    0 Sep 29 22:44 public/post/index.html
--rw-r--r--  1 quoha  staff  128 Sep 29 22:44 public/post/second/index.html
-
-$ cat public/index.html 
-<!DOCTYPE html>
-<html>
-<body>
-  
-    <h1><a href="/post/second/">second</a></h1>
-  
-    <h1><a href="/post/first/">first</a></h1>
-  
-</body>
-</html>
-
-$
-```
-
-### Create a Post Listing
-
-We have the posts displaying on the home page and on their own page. We also have a file public/post/index.html that is empty. Let's make it show a list of all posts (not just the first ten).
-
-We need to decide which template to update. This will be a listing, so it should be a list template. Let's take a quick look and see which list templates are available.
-
-```
-$ find themes/zafta -name list.html | xargs ls -l
--rw-r--r--  1 quoha  staff  0 Sep 29 17:31 themes/zafta/layouts/_default/list.html
-```
-
-As with the single post, we have to decide to update _default/list.html or create post/list.html. We still don't have multiple content types, so let's stay consistent and update the default list template.
-
-## Creating Top Level Pages
-
-Let's add an "about" page and display it at the top level (as opposed to a sub-level like we did with posts).
-
-The default in Hugo is to use the directory structure of the content/ directory to guide the location of the generated html in the public/ directory. Let's verify that by creating an "about" page at the top level:
+typedef struct uv_loop_s uv_loop_t;
+typedef struct uv_err_s uv_err_t;
+typedef struct uv_handle_s uv_handle_t;
+typedef struct uv_stream_s uv_stream_t;
+typedef struct uv_tcp_s uv_tcp_t;
+typedef struct uv_udp_s uv_udp_t;
+typedef struct uv_pipe_s uv_pipe_t;
+typedef struct uv_tty_s uv_tty_t;
+typedef struct uv_poll_s uv_poll_t;
+typedef struct uv_timer_s uv_timer_t;
+typedef struct uv_prepare_s uv_prepare_t;
+typedef struct uv_check_s uv_check_t;
+typedef struct uv_idle_s uv_idle_t;
+typedef struct uv_async_s uv_async_t;
+typedef struct uv_process_s uv_process_t;
+typedef struct uv_fs_event_s uv_fs_event_t;
+typedef struct uv_fs_poll_s uv_fs_poll_t;
+typedef struct uv_signal_s uv_signal_t;
 
 ```
-$ vi content/about.md 
-+++
-title = "about"
-description = "about this site"
-date = "2014-09-27"
-slug = "about time"
-+++
+这些监视器都有对应着一种异步操作，它们通过 uv_TYPE_start，来注册事件监听以及相应的回调。
 
-## about us
+在 uv_run 执行过程中，它会不断的检查这些队列中是或有 pending 状态的事件，有则触发:
+```c
+// node-v8.9.0/deps/uv/src/unix/core.c
+ 
+int uv_run(uv_loop_t* loop, uv_run_mode mode) {
+  int timeout;
+  int r;
+  int ran_pending;
 
-i'm speechless
-:wq
+  // 如果循环中还有活动句柄或请求，返回true
+  r = uv__loop_alive(loop);
+  if (!r)
+    uv__update_time(loop);
+
+  while (r != 0 && loop->stop_flag == 0) {
+    // 使用Linux下的高精度Timer hrtime更新loop->time,即event loop的时间戳
+    uv__update_time(loop);
+    // 执行判断当前loop->time下有无到期的Timer定时器 
+    uv__run_timers(loop);
+    // 判断当前的pending_queue是否有事件待处理,并且一次将&loop->pending_queue中的uv__io_t对应的cb全部拿出来执行 
+    ran_pending = uv__run_pending(loop);
+    // 一次将&loop->idle_handles中的idle_cd全部执行完毕(如果存在的话) 
+    uv__run_idle(loop);
+    // 一次将&loop->prepare_handles中的prepare_cb全部执行完毕(如果存在的话)
+    uv__run_prepare(loop);
+
+    timeout = 0;
+    //如果是UV_RUN_ONCE的模式,并且pending_queue队列为空,或者采用UV_RUN_DEFAULT(在一个loop中处理所有事件),
+    //则将timeout参数置为最近的一个定时器的timeout时间,防止在uv_io_poll中阻塞住无法进入超时的定时器中
+    if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
+      timeout = uv_backend_timeout(loop);
+    
+    //进入I/O处理的函数(重点分析的部分),此处挂载timeout是为了防止在uv__io_poll中陷入阻塞无法执行定时器;
+    //并且对于模式为UV_RUN_NOWAIT的uv_run执行,timeout为0可以保证其立即跳出uv__io_poll,达到了非阻塞调用的效果
+    uv__io_poll(loop, timeout);
+    
+    // 一次将&loop->check_handles中的check_cb全部执行完毕(如果存在的话)
+    uv__run_check(loop);
+    // 执行结束时的资源释放,loop->closing_handles指针指向NULL
+    uv__run_closing_handles(loop);
+
+    if (mode == UV_RUN_ONCE) {
+      /* UV_RUN_ONCE implies forward progress: at least one callback must have
+       * been invoked when it returns. uv__io_poll() can return without doing
+       * I/O (meaning: no callbacks) when its timeout expires - which means we
+       * have pending timers that satisfy the forward progress constraint.
+       *
+       * UV_RUN_NOWAIT makes no guarantees about progress so it's omitted from
+       * the check.
+       */
+       /* （译）
+       UV_RUN_ONCE: 意味着前进进程：返回时至少必须调用一个回调。 当它的超时到期时，
+       uv__io_poll（）可以返回而不做I / O（意思是：没有回调)
+       这意味着我们有等待的定时器满足前进进程约束。
+       
+       UV_RUN_NOWAIT: 不保证进度，所以从检查中省略。
+       */
+       
+      //如果是UV_RUN_ONCE模式,继续更新当前event loop的时间戳
+      uv__update_time(loop);
+      //执行timers,判断是否有已经到期的timer
+      uv__run_timers(loop);
+    }
+    
+    // 那么如果若它还是存活的，它就会开始下一次迭代
+    r = uv__loop_alive(loop);
+    // 如果不是 UV_RUN_DEFAULT 模式启动，就退出
+    if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
+      break;
+  }
+
+  /* The if statement lets gcc compile it to a conditional store. Avoids
+   * dirtying a cache line.
+   */
+   	//标记当前的stop_flag为0,表示当前的loop执行完毕
+  if (loop->stop_flag != 0)
+    loop->stop_flag = 0;
+
+  return r;
+}
+```
+### 循环过程详解
+![image](http://docs.libuv.org/en/latest/_images/loop_iteration.png)
+1. 事件循环中的“现在时间（now）”被更新。事件循环会在一次循环迭代开始的时候缓存下当时的时间，用于减少与时间相关的系统调用次数。
+2. 如果事件循环仍是存活（alive）的，那么迭代就会开始，否则循环会立刻退出。如果一个循环内包含存活的可引用句柄，存活的请求或正在关闭的句柄，那么则认为该循环是存活的。
+3. 执行定时器（due timers）。所有在循环的“现在时间”之前设定的定时器的回调都将在这个时候得到执行。
+4. 执行等待中回调（pending callbacks）。正常情况下，所有的 ```I/O``` 回调都会在轮询 ```I/O``` 后立刻被调用。但是有些情况下，回调可能会被推迟至下一次循环迭代中再执行。任何上一次循环中被推迟的回调，都将在这个时候得到执行。
+5. 执行闲置句柄回调（idle handle callbacks）。尽管它有个不怎么好听的名字，但只要这些闲置句柄是激活的，那么在每次循环迭代中它们都会执行。
+6. 执行预备回调（prepare handle）。预备回调会在循环为 ```I/O``` 阻塞前被调用。
+7. 开始计算轮询超时（poll timeout）。在为 ```I/O``` 阻塞前，事件循环会计算它即将会阻塞多长时间。以下为计算该超时的规则：
+    *  如果循环带着 ```UV_RUN_NOWAIT``` 标识执行，那么超时将会是 0 。
+    * 如果循环即将停止（uv_stop() 已在之前被调用），那么超时将会是 0 。
+    * 如果循环内没有激活的句柄和请求，那么超时将会是 0 。
+    * 如果循环内有激活的闲置句柄，那么超时将会是 0 。
+    * 如果有正在等待被关闭的句柄，那么超时将会是 0 。
+    * 如果不符合以上所有，那么该超时将会是循环内所有定时器中最早的一个超 时时间，如果没有任何一个激活的定时器，那么超时将会是无限长（infinity）。
+8. 事件循环为 ```I/O``` 阻塞。此时事件循环将会为 ```I/O``` 阻塞，持续时间为上一步中计算所得的超时时间。所有与 ```I/O``` 相关的句柄都将会监视一个指定的文件描述符，等待一个其上的读或写操作来激活它们的回调。
+9. 执行检查句柄回调（check handle callbacks）。在事件循环为 ```I/O``` 阻塞结束后，检查句柄的回调将会立刻执行。检查句柄本质上是预备句柄的对应物（counterpart）。
+10. 执行关闭回调（close callbacks）。如果一个句柄通过调用 ```uv_close()``` 被关闭，那么这将会调用关闭回调。
+尽管在为 ```I/O``` 阻塞后可能并没有 ```I/O``` 回调被触发，但是仍有可能这时已经有一些定时器已经超时。若事件循环是以 11.  ```UV_RUN_ONCE```  标识执行，那么在这时这些超时的定时器的回调将会在此时得到执行。
+12. 迭代结束。如果循环以 ```UV_RUN_NOWAIT``` 或 ```UV_RUN_ONCE``` 标识执行，迭代便会结束，并且 ```uv_run()``` 将会返回。如果循环以  ```UV_RUN_DEFAULT``` 标识执行，那么如果若它还是存活的，它就会开始下一次迭代，否则结束。
+
+重要：虽然 ```libuv``` 的异步文件 ```I/O``` 操作是通过线程池实现的，但是网络 ```I/O``` 总是在单线程中执行的。
+
+> 注意：虽然在不同平台上使用的轮询机制不同，但 ```libuv``` 的执行模型在不同平台下都是保持一致。
+[libuv 文档](http://docs.libuv.org/en/latest/design.html)
+
+## timer阶段 —— uv__run_timers
+计时器指定timeout，之后可以执行提供的回调，而不是人们希望执行的确切时间。定时器回调会在指定的时间过后按照预定的时间运行;但是，操作系统调度或其他回调的运行可能会延迟它们。
+.```uv__run_timers```，跑完已经执行的所有timer任务。
+
+```c
+// node-v8.9.0/deps/uv/src/unix/timer.c
+
+void uv__run_timers(uv_loop_t* loop) {
+  struct heap_node* heap_node;
+  uv_timer_t* handle;
+ 
+  for (;;) {
+    // 从一个堆里面取出delay最小的任务。 
+    heap_node = heap_min((struct heap*) &loop->timer_heap);
+    if (heap_node == NULL)
+      break;
+ 
+    handle = container_of(heap_node, uv_timer_t, heap_node);
+    // 判断delay的任务是不是可以执行了（判断delay的执行时间与当前时间的大小）。 
+    if (handle->timeout > loop->time)
+      break;
+ 
+    uv_timer_stop(handle);
+    // 如果是需要重复执行的timer，就再次add一个timer。 
+    uv_timer_again(handle);
+    // 执行回调 
+    handle->timer_cb(handle);
+  }
+}
+```
+> 注意：在技术上，轮询阶段控制何时执行定时器。
+
+## I/O callbacks阶段 —— uv__run_pending
+此阶段对某些系统操作（如TCP错误类型）执行回调。 例如，如果尝试连接时TCP套接字收到ECONNREFUSED，则某些* nix系统要等待报告错误。 这将排队在I / O回调阶段执行。
+```c
+// node-v8.9.0/deps/uv/src/unix/core.c
+
+static int uv__run_pending(uv_loop_t* loop) {
+  QUEUE* q;
+  QUEUE pq;
+  uv__io_t* w;
+ 
+  if (QUEUE_EMPTY(&loop->pending_queue))
+    return 0;
+ 
+  QUEUE_MOVE(&loop->pending_queue, &pq);
+ 
+  while (!QUEUE_EMPTY(&pq)) {
+    q = QUEUE_HEAD(&pq);
+    QUEUE_REMOVE(q);
+    QUEUE_INIT(q);
+    w = QUEUE_DATA(q, uv__io_t, pending_queue);
+    w->cb(loop, w, POLLOUT);
+  }
+ 
+  return 1;
+}
+```
+## idle, prepare 阶段
+```
+uv__run_idle(loop);
+uv__run_prepare(loop);
 ```
 
-Generate the web site and verify the results.
-
+## 事件循环核心函数 —— uv__io_poll
+接下来是另外一个核心函数，```uv__io_poll```。以linux-core.c为例（其他实现同理）：
 ```
-$ find public -name '*.html' | xargs ls -l
--rw-rw-r--  1 mdhender  staff   334 Sep 27 15:08 public/about-time/index.html
--rw-rw-r--  1 mdhender  staff   527 Sep 27 15:08 public/index.html
--rw-rw-r--  1 mdhender  staff   358 Sep 27 15:08 public/post/first-post/index.html
--rw-rw-r--  1 mdhender  staff     0 Sep 27 15:08 public/post/index.html
--rw-rw-r--  1 mdhender  staff   342 Sep 27 15:08 public/post/second-post/index.html
+// node-v8.9.0/src/deps/src/unix/linux-core.c
+
+void uv__io_poll(uv_loop_t* loop, int timeout) {
+
+...
+
+  if (loop->nfds == 0) {
+    assert(QUEUE_EMPTY(&loop->watcher_queue));
+    return;
+  }
+   
+  // 遍历观察者队列
+  while (!QUEUE_EMPTY(&loop->watcher_queue)) {
+    q = QUEUE_HEAD(&loop->watcher_queue);
+    QUEUE_REMOVE(q);
+    QUEUE_INIT(q);
+
+    // 取出观察者 小w
+    w = QUEUE_DATA(q, uv__io_t, watcher_queue);
+    assert(w->pevents != 0);
+    assert(w->fd >= 0);
+    assert(w->fd < (int) loop->nwatchers);
+   
+    // 将小w的待处理事件和fd文件描述符赋值给e
+    e.events = w->pevents;
+    e.data = w->fd;
+
+    // 如果待处理事件为0，为增加模式，否则为修改模式
+    if (w->events == 0)
+      op = UV__EPOLL_CTL_ADD;
+    else
+      op = UV__EPOLL_CTL_MOD;
+
+    /* XXX Future optimization: do EPOLL_CTL_MOD lazily if we stop watching
+     * events, skip the syscall and squelch the events after epoll_wait().
+     */
+
+    // 添加fd给事件轮询机制
+    if (uv__epoll_ctl(loop->backend_fd, op, w->fd, &e)) {
+      if (errno != EEXIST)
+        abort();
+
+      assert(op == UV__EPOLL_CTL_ADD);
+
+      /* We've reactivated a file descriptor that's been watched before. */
+      // (译)我们已经重新激活了之前观看过的文件描述符。
+      if (uv__epoll_ctl(loop->backend_fd, UV__EPOLL_CTL_MOD, w->fd, &e))
+        abort();
+    }
+    
+    // 将待处理的事件赋值给事件
+    w->events = w->pevents;
+  }
+
+  sigmask = 0;
+  if (loop->flags & UV_LOOP_BLOCK_SIGPROF) {
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGPROF);
+    sigmask |= 1 << (SIGPROF - 1);
+  }
+
+  // 计时
+  assert(timeout >= -1);
+  base = loop->time;
+  count = 48; /* Benchmarks suggest this gives the best throughput. */
+  real_timeout = timeout;
+
+  // 进入事件循环死循环
+  for (;;) {
+    /* See the comment for max_safe_timeout for an explanation of why
+     * this is necessary.  Executive summary: kernel bug workaround.
+     */
+    // 最大超时时间
+    if (sizeof(int32_t) == sizeof(long) && timeout >= max_safe_timeout)
+      timeout = max_safe_timeout;
+
+    if (sigmask != 0 && no_epoll_pwait != 0)
+      if (pthread_sigmask(SIG_BLOCK, &sigset, NULL))
+        abort();
+
+    if (no_epoll_wait != 0 || (sigmask != 0 && no_epoll_pwait == 0)) {
+
+      // 使用uv__epoll_pwait在指定的时间内等待哪些fd有事件到来
+      nfds = uv__epoll_pwait(loop->backend_fd,
+                             events,
+                             ARRAY_SIZE(events),
+                             timeout,
+                             sigmask);
+      if (nfds == -1 && errno == ENOSYS)
+        no_epoll_pwait = 1;
+    } else {
+      nfds = uv__epoll_wait(loop->backend_fd,
+                            events,
+                            ARRAY_SIZE(events),
+                            timeout);
+      if (nfds == -1 && errno == ENOSYS)
+        no_epoll_wait = 1;
+    }
+
+    if (sigmask != 0 && no_epoll_pwait != 0)
+      if (pthread_sigmask(SIG_UNBLOCK, &sigset, NULL))
+        abort();
+
+    /* Update loop->time unconditionally. It's tempting to skip the update when
+     * timeout == 0 (i.e. non-blocking poll) but there is no guarantee that the
+     * operating system didn't reschedule our process while in the syscall.
+     */
+
+    // (译)无条件更新循环时间。 当 timeout == 0（即非阻塞轮询）时，很容易跳过更新，
+    // 但不能保证操作系统在系统调用时不重新调度我们的进程。
+    SAVE_ERRNO(uv__update_time(loop));
+
+    // 如果没有监测到有事件发生
+    if (nfds == 0) {
+      assert(timeout != -1);
+
+      if (timeout == 0)
+        return;
+
+      /* We may have been inside the system call for longer than |timeout|
+       * milliseconds so we need to update the timestamp to avoid drift.
+       */
+      goto update_timeout;
+    }
+
+    // 如果发生错误
+    if (nfds == -1) {
+      if (errno == ENOSYS) {
+        /* epoll_wait() or epoll_pwait() failed, try the other system call. */
+        assert(no_epoll_wait == 0 || no_epoll_pwait == 0);
+        continue;
+      }
+
+      if (errno != EINTR)
+        abort();
+
+      if (timeout == -1)
+        continue;
+
+      if (timeout == 0)
+        return;
+
+      /* Interrupted by a signal. Update timeout and poll again. */
+      goto update_timeout;
+    }
+
+    have_signals = 0;
+    nevents = 0;
+
+    assert(loop->watchers != NULL);
+    loop->watchers[loop->nwatchers] = (void*) events;
+    loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
+
+    // 遍历所有的epoll事件 
+    for (i = 0; i < nfds; i++) {
+
+      // 取出这个fd文件操作符
+      pe = events + i;
+      fd = pe->data;
+
+      /* Skip invalidated events, see uv__platform_invalidate_fd */
+      // 如果fd无效，continue循环
+      if (fd == -1)
+        continue;
+
+      assert(fd >= 0);
+      assert((unsigned) fd < loop->nwatchers);
+
+      // 取出观察者
+      w = loop->watchers[fd];
+
+      // 
+      if (w == NULL) {
+        /* File descriptor that we've stopped watching, disarm it.
+         *
+         * Ignore all errors because we may be racing with another thread
+         * when the file descriptor is closed.
+         */
+
+        // （译）我们已经停止监视的文件描述符，解除它的关闭(重新添加一次)。
+        //忽略所有错误，因为当文件描述符关闭时，我们可能正在与另一个线程竞争。
+        uv__epoll_ctl(loop->backend_fd, UV__EPOLL_CTL_DEL, fd, pe);
+        continue;
+      }
+
+      /* Give users only events they're interested in. Prevents spurious
+       * callbacks when previous callback invocation in this loop has stopped
+       * the current watcher. Also, filters out events that users has not
+       * requested us to watch.
+       */
+
+      // （译）为用户提供他们感兴趣的事件。防止在此循环中先前的回调调用停止当前观察器时发生虚假回调。
+      // 此外，过滤出用户没有要求我们观看的事件。
+      pe->events &= w->pevents | POLLERR | POLLHUP;
+
+      /* Work around an epoll quirk where it sometimes reports just the
+       * EPOLLERR or EPOLLHUP event.  In order to force the event loop to
+       * move forward, we merge in the read/write events that the watcher
+       * is interested in; uv__read() and uv__write() will then deal with
+       * the error or hangup in the usual fashion.
+       *
+       * Note to self: happens when epoll reports EPOLLIN|EPOLLHUP, the user
+       * reads the available data, calls uv_read_stop(), then sometime later
+       * calls uv_read_start() again.  By then, libuv has forgotten about the
+       * hangup and the kernel won't report EPOLLIN again because there's
+       * nothing left to read.  If anything, libuv is to blame here.  The
+       * current hack is just a quick bandaid; to properly fix it, libuv
+       * needs to remember the error/hangup event.  We should get that for
+       * free when we switch over to edge-triggered I/O.
+       */
+
+  //  解决epoll问题，它有时只报告EPOLLERR或EPOLLHUP事件。 为了强制事件循环前进，我们合并了观察者感兴趣的读/写事件; 
+  //   uv__read（）和uv__write（）将以通常的方式处理错误或挂断。
+  //  注意：当epoll报告EPOLLIN | EPOLLHUP时，用户读取可用数据，调用uv_read_stop（），然后再次调用uv_read_start（）。 
+  //  到那时，libuv已经忘记了挂断，内核不会再次报告EPOLLIN，因为没有什么可读的。
+
+      if (pe->events == POLLERR || pe->events == POLLHUP)
+        pe->events |= w->pevents & (POLLIN | POLLOUT | UV__POLLPRI);
+
+      if (pe->events != 0) {
+        /* Run signal watchers last.  This also affects child process watchers
+         * because those are implemented in terms of signal watchers.
+         */
+        // 如果是signal事件，标志位设为1
+        if (w == &loop->signal_io_watcher)
+          have_signals = 1;
+        else
+          // 调用观察者结构体中的回调函数
+          w->cb(loop, w, pe->events);
+
+        nevents++;
+      }
+    }
+
+    if (have_signals != 0)
+      // 调用singal观察者的回调函数
+      loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+
+    loop->watchers[loop->nwatchers] = NULL;
+    loop->watchers[loop->nwatchers + 1] = NULL;
+
+    if (have_signals != 0)
+      return;  /* Event loop should cycle now so don't poll again. */
+
+    if (nevents != 0) {
+      if (nfds == ARRAY_SIZE(events) && --count != 0) {
+        /* Poll for more events but don't block this time. */
+        timeout = 0;
+        continue;
+      }
+      return;
+    }
+
+    if (timeout == 0)
+      return;
+
+    if (timeout == -1)
+      continue;
+// 更新超时时间
+update_timeout:
+    assert(timeout > 0);
+
+    real_timeout -= (loop->time - base);
+    if (real_timeout <= 0)
+      return;
+
+    timeout = real_timeout;
+  }
+}
+```
+代码很长但逻辑很简单：
+首先遍历 ```loop->watcher_queue``` ，取出所有io观察者.
+调用 ```uv__epoll_ctl()```，把 ```w->fd```（io观察者对应的fd）注册给linux系统的 ```epoll``` 机制，```uv__epoll_pwait()```时就监听对应的fd. 
+实现这个功能的函数是：```uv__epoll_ctl```: 根据不同的模式添加，删除或更新文件描述符和轮询事件。
+不同的模式有：
+*  ```UV__EPOLL_CTL_ADD``` : 更改与目标文件描述符fd关联的事件。
+*  ```UV__EPOLL_CTL_MOD``` : 在epoll文件描述符epfd中修改目标文件描述符fd
+*  ```UV__EPOLL_CTL_DEL``` : 从epoll文件描述符epfd中删除目标文件描述符fd
+
+然后进入死循环 调用 ```uv__epoll_ctl``` 执行轮询操作确定哪些文件描述符有事件待处理。```timeout``` 参数指定如果没有事件待处理，等待的时间量。将 ```timeout``` 设置为0可以立即返回。将超时设置为-1指定无限超时。其他非零的正值指定以毫秒为单位的等待时间。
+
+如果 ```uv__epoll_pwait``` 返回了所有的 ```epoll``` 事件 ，遍历访问事件的 ```fd``` ，这个时候 ```loop->watchers``` 映射表就起到作用了，通过 fd 拿出对应的 I/O 观察者 —— w，调用 ```w->cb()```执行回调函数。
+
+
+## check 阶段 —— uv__run_check
+```
+uv__run_check
+```
+这个阶段允许在poll阶段结束后立即执行回调。 如果轮询阶段变得空闲并且脚本已经用 ```setImmediate（） ```排队，则事件循环可以继续到poll阶段而不是等待。
+
+```setImmediate（）``` 实际上是一个特殊的定时器，它在事件循环的一个单独的阶段中运行。 它使用一个 ```libuv API``` 来调度轮询阶段完成后执行的回调。
+
+通常，随着代码的执行，事件循环将最终进入轮询阶段，在那里它将等待传入连接，请求等。但是，如果使用 ```setImmediate（）``` 计划了回调，并且轮询阶段变为空闲， 将结束并继续进行检查阶段，而不是等待poll事件。
+## close callbacks 阶段 —— uv__run_closing_handles
+如果 ```socket``` 或 ```handle``` 突然关闭（例如 ```socket.destroy（）``` ），则在此阶段将触发“close”事件。 否则，它将通过 ```process.nextTick（）```触发。
+```c
+static void uv__run_closing_handles(uv_loop_t* loop) {
+  uv_handle_t* p;
+  uv_handle_t* q;
+
+  p = loop->closing_handles;
+  loop->closing_handles = NULL;
+
+  while (p) {
+    q = p->next_closing;
+    uv__finish_close(p);
+    p = q;
+  }
+}
 ```
 
-Notice that the page wasn't created at the top level. It was created in a sub-directory named 'about-time/'. That name came from our slug. Hugo will use the slug to name the generated content. It's a reasonable default, by the way, but we can learn a few things by fighting it for this file.
+# 总结
+Node主线程是js执行线程，是不会处于block（阻塞）状态的，除非使用 ```fs.readFileSync``` 等 ```node api``` 里的同步方法，或者死循环。
 
-One other thing. Take a look at the home page.
-
+Node.js使用的是 ```Reactor``` 模式，凡是遇到需要block的地方，要么使用系统的异步API（网络请求），要么扔到线程池里（文件读写）去做，主线程接着处理其他请求。
+所以多请求并发的时候，Node.js本质上是在排队，但是每个人等待的时间都很短，除非每个请求都耗费大量CPU时间。所以Node.js这种 ```Reactor``` 模式的 ```Server``` 对于 ```CPU``` 利用是相对高效的，避免了线程切换导致的的 ```CPU``` 上下文切换。
+``` 
+┌───────────────────────┐
+┌─>│        timers         │
+│  └──────────┬────────────┘
+│  ┌──────────┴────────────┐
+│  │     I/O callbacks     │
+│  └──────────┬────────────┘
+│  ┌──────────┴────────────┐
+│  │     idle, prepare     │
+│  └──────────┬────────────┘      ┌───────────────┐
+│  ┌──────────┴────────────┐      │   incoming:   │
+│  │         poll          │<─────┤  connections, │
+│  └──────────┬────────────┘      │   data, etc.  │
+│  ┌──────────┴────────────┐      └───────────────┘
+│  │        check          │
+│  └──────────┬────────────┘
+│  ┌──────────┴────────────┐
+└──┤    close callbacks    │
+   └───────────────────────┘
 ```
-$ cat public/index.html
-<!DOCTYPE html>
-<html>
-<body>
-    <h1><a href="http://localhost:1313/post/theme/">creating a new theme</a></h1>
-    <h1><a href="http://localhost:1313/about-time/">about</a></h1>
-    <h1><a href="http://localhost:1313/post/second-post/">second</a></h1>
-    <h1><a href="http://localhost:1313/post/first-post/">first</a></h1>
-<script>document.write('<script src="http://'
-        + (location.host || 'localhost').split(':')[0]
-		+ ':1313/livereload.js?mindelay=10"></'
-        + 'script>')</script></body>
-</html>
+每个阶段都有一个执行回调的FIFO队列。虽然每个阶段都是以自己的方式特殊的，但通常当事件循环进入给定阶段时，它将执行特定于该阶段的任何操作，然后在该阶段的队列中执行回调，直到队列耗尽或回调的最大数量已执行。当队列耗尽或达到回调限制时，事件循环将移至下一个阶段，依此类推。
+
+* timers:此阶段执行由 ```setTimeout（）``` 和 ```setInterval（）``` 调度的回调。
+* I/O callbacks: 执行几乎所有的回调函数，除了关闭回调函数，定时器调度函数和```setImmediate（）```.
+* idle, prepare : 只在Node内部使用
+* poll： 检索新的I/O事件;Node将在适当的时候阻塞。
+* check ： ```setImmediate（）``` 回调在这里被调用。
+* close callbacks：例如 ```socket.on（'close'，...）``` 。
+
+
+# 精选面试题
+
+## setTimeout(cb, 0) === setTimeout(cb, 1) ？
+其实是一样的，看下Node对Timer的实现
 ```
+function createSingleTimeout(callback, after, args) {
+  after *= 1; // coalesce to number or NaN
+  if (!(after >= 1 && after <= TIMEOUT_MAX)) {
+    if (after > TIMEOUT_MAX) {
+      process.emitWarning(`${after} does not fit into` +
+                          ' a 32-bit signed integer.' +
+                          '\nTimeout duration was set to 1.',
+                          'TimeoutOverflowWarning');
+    }
+    after = 1; // schedule on next tick, follows browser behavior
+  }
 
-Notice that the "about" link is listed with the posts? That's not desirable, so let's change that first.
+  var timer = new Timeout(after, callback, args);
+  if (process.domain)
+    timer.domain = process.domain;
 
+  active(timer);
+
+  return timer;
+}
 ```
-$ vi themes/zafta/layouts/index.html
-<!DOCTYPE html>
-<html>
-<body>
-  <h1>posts</h1>
-  {{ range first 10 .Data.Pages }}
-    {{ if eq .Type "post"}}
-      <h2><a href="{{ .Permalink }}">{{ .Title }}</a></h2>
-    {{ end }}
-  {{ end }}
+可以看到 ```<1``` 的值被转化为1，浏览器中也是这样实现的。
 
-  <h1>pages</h1>
-  {{ range .Data.Pages }}
-    {{ if eq .Type "page" }}
-      <h2><a href="{{ .Permalink }}">{{ .Title }}</a></h2>
-    {{ end }}
-  {{ end }}
-</body>
-</html>
-:wq
-```
 
-Generate the web site and verify the results. The home page has two sections, posts and pages, and each section has the right set of headings and links in it.
-
-But, that about page still renders to about-time/index.html.
-
-```
-$ find public -name '*.html' | xargs ls -l
--rw-rw-r--  1 mdhender  staff    334 Sep 27 15:33 public/about-time/index.html
--rw-rw-r--  1 mdhender  staff    645 Sep 27 15:33 public/index.html
--rw-rw-r--  1 mdhender  staff    358 Sep 27 15:33 public/post/first-post/index.html
--rw-rw-r--  1 mdhender  staff      0 Sep 27 15:33 public/post/index.html
--rw-rw-r--  1 mdhender  staff    342 Sep 27 15:33 public/post/second-post/index.html
-```
-
-Knowing that hugo is using the slug to generate the file name, the simplest solution is to change the slug. Let's do it the hard way and change the permalink in the configuration file.
-
-```
-$ vi config.toml
-[permalinks]
-	page = "/:title/"
-	about = "/:filename/"
-```
-
-Generate the web site and verify that this didn't work. Hugo lets "slug" or "URL" override the permalinks setting in the configuration file. Go ahead and comment out the slug in content/about.md, then generate the web site to get it to be created in the right place.
-
-## Sharing Templates
-
-If you've been following along, you probably noticed that posts have titles in the browser and the home page doesn't. That's because we didn't put the title in the home page's template (layouts/index.html). That's an easy thing to do, but let's look at a different option.
-
-We can put the common bits into a shared template that's stored in the themes/zafta/layouts/partials/ directory.
-
-### Create the Header and Footer Partials
-
-In Hugo, a partial is a sugar-coated template. Normally a template reference has a path specified. Partials are different. Hugo searches for them along a TODO defined search path. This makes it easier for end-users to override the theme's presentation.
-
-```
-$ vi themes/zafta/layouts/partials/header.html
-<!DOCTYPE html>
-<html>
-<head>
-	<title>{{ .Title }}</title>
-</head>
-<body>
-:wq
-
-$ vi themes/zafta/layouts/partials/footer.html
-</body>
-</html>
-:wq
-```
-
-### Update the Home Page Template to Use the Partials
-
-The most noticeable difference between a template call and a partials call is the lack of path:
-
-```
-{{ template "theme/partials/header.html" . }}
-```
-versus
-```
-{{ partial "header.html" . }}
-```
-Both pass in the context.
-
-Let's change the home page template to use these new partials.
-
-```
-$ vi themes/zafta/layouts/index.html
-{{ partial "header.html" . }}
-
-  <h1>posts</h1>
-  {{ range first 10 .Data.Pages }}
-    {{ if eq .Type "post"}}
-      <h2><a href="{{ .Permalink }}">{{ .Title }}</a></h2>
-    {{ end }}
-  {{ end }}
-
-  <h1>pages</h1>
-  {{ range .Data.Pages }}
-    {{ if or (eq .Type "page") (eq .Type "about") }}
-      <h2><a href="{{ .Permalink }}">{{ .Type }} - {{ .Title }} - {{ .RelPermalink }}</a></h2>
-    {{ end }}
-  {{ end }}
-
-{{ partial "footer.html" . }}
-:wq
-```
-
-Generate the web site and verify the results. The title on the home page is now "your title here", which comes from the "title" variable in the config.toml file.
-
-### Update the Default Single Template to Use the Partials
-
-```
-$ vi themes/zafta/layouts/_default/single.html
-{{ partial "header.html" . }}
-
-  <h1>{{ .Title }}</h1>
-  {{ .Content }}
-
-{{ partial "footer.html" . }}
-:wq
-```
-
-Generate the web site and verify the results. The title on the posts and the about page should both reflect the value in the markdown file.
-
-## Add “Date Published” to Posts
-
-It's common to have posts display the date that they were written or published, so let's add that. The front matter of our posts has a variable named "date." It's usually the date the content was created, but let's pretend that's the value we want to display.
-
-### Add “Date Published” to the Template
-
-We'll start by updating the template used to render the posts. The template code will look like:
-
-```
-{{ .Date.Format "Mon, Jan 2, 2006" }}
-```
-
-Posts use the default single template, so we'll change that file.
-
-```
-$ vi themes/zafta/layouts/_default/single.html
-{{ partial "header.html" . }}
-
-  <h1>{{ .Title }}</h1>
-  <h2>{{ .Date.Format "Mon, Jan 2, 2006" }}</h2>
-  {{ .Content }}
-
-{{ partial "footer.html" . }}
-:wq
-```
-
-Generate the web site and verify the results. The posts now have the date displayed in them. There's a problem, though. The "about" page also has the date displayed.
-
-As usual, there are a couple of ways to make the date display only on posts. We could do an "if" statement like we did on the home page. Another way would be to create a separate template for posts.
-
-The "if" solution works for sites that have just a couple of content types. It aligns with the principle of "code for today," too.
-
-Let's assume, though, that we've made our site so complex that we feel we have to create a new template type. In Hugo-speak, we're going to create a section template.
-
-Let's restore the default single template before we forget.
-
-```
-$ mkdir themes/zafta/layouts/post
-$ vi themes/zafta/layouts/_default/single.html
-{{ partial "header.html" . }}
-
-  <h1>{{ .Title }}</h1>
-  {{ .Content }}
-
-{{ partial "footer.html" . }}
-:wq
-```
-
-Now we'll update the post's version of the single template. If you remember Hugo's rules, the template engine will use this version over the default.
-
-```
-$ vi themes/zafta/layouts/post/single.html
-{{ partial "header.html" . }}
-
-  <h1>{{ .Title }}</h1>
-  <h2>{{ .Date.Format "Mon, Jan 2, 2006" }}</h2>
-  {{ .Content }}
-
-{{ partial "footer.html" . }}
-:wq
-
-```
-
-Note that we removed the date logic from the default template and put it in the post template. Generate the web site and verify the results. Posts have dates and the about page doesn't.
-
-### Don't Repeat Yourself
-
-DRY is a good design goal and Hugo does a great job supporting it. Part of the art of a good template is knowing when to add a new template and when to update an existing one. While you're figuring that out, accept that you'll be doing some refactoring. Hugo makes that easy and fast, so it's okay to delay splitting up a template.
